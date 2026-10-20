@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Magician Smart Controller</title>
+<style>
+:root{
+  --bg:#f5f6f8;--panel:#ffffff;--ink:#1b1f24;--muted:#6b7280;--line:#e1e4ea;
+  --accent:#2563eb;--reach:rgba(37,99,235,.07);--warn:#d97706;--ok:#15803d;--err:#b91c1c;--danger:#dc2626;
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115;--panel:#171a21;--ink:#e6e8ec;--muted:#8b93a1;--line:#2a2f3a;
+  --accent:#60a5fa;--reach:rgba(96,165,250,.10);--warn:#fbbf24;--ok:#4ade80;--err:#f87171;--danger:#f87171;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115;--panel:#171a21;--ink:#e6e8ec;--muted:#8b93a1;--line:#2a2f3a;
+    --accent:#60a5fa;--reach:rgba(96,165,250,.10);--warn:#fbbf24;--ok:#4ade80;--err:#f87171;--danger:#f87171;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,system-ui,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+header h1{font-size:16px;margin:0 8px 0 0;font-weight:650}
+.pose{font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px;flex:1;min-width:200px}
+.pill{font-size:12px;padding:3px 9px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.pill.ok{color:var(--ok);border-color:var(--ok)}
+.pill.sim{color:var(--warn);border-color:var(--warn)}
+button{font:inherit;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+button.ghost{color:var(--muted)}
+button.estop{background:var(--danger);border-color:var(--danger);color:#fff;font-weight:700;padding:8px 16px;letter-spacing:.3px}
+nav{display:flex;gap:4px;padding:8px 16px 0;border-bottom:1px solid var(--line);background:var(--panel);overflow-x:auto}
+nav button{border:none;border-bottom:2px solid transparent;border-radius:0;background:none;padding:8px 12px;color:var(--muted)}
+nav button.active{color:var(--ink);border-bottom-color:var(--accent)}
+main{padding:14px 16px 40px;max-width:1100px;margin:0 auto}
+section.tab{display:none}
+section.tab.active{display:block}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.card h3{margin:0 0 8px;font-size:14px}
+canvas.world{width:100%;height:440px;display:block;border-radius:10px;border:1px solid var(--line);background:var(--panel);touch-action:none;cursor:crosshair}
+canvas.small{width:100%;height:340px;display:block;border-radius:10px;border:1px solid var(--line);background:var(--panel)}
+.muted{color:var(--muted);font-size:13px}
+.hint{font-size:12px;color:var(--muted);margin-top:6px}
+label.f{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);min-width:110px}
+input,select,textarea{font:inherit;padding:6px 8px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+input[type=number]{width:110px}
+input[type=range]{width:200px}
+textarea{width:100%;min-height:70px;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.drop{border:1.5px dashed var(--line);border-radius:12px;padding:18px;text-align:center;color:var(--muted)}
+.drop.hot{border-color:var(--accent);color:var(--accent)}
+.bar{height:6px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:8px}
+.bar>div{height:100%;width:0;background:var(--accent);transition:width .2s}
+.stats{font-size:12.5px;color:var(--muted);margin-top:8px;font-variant-numeric:tabular-nums}
+.take{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.take:last-child{border-bottom:none}
+#log{font:12px/1.5 ui-monospace,Menlo,monospace;max-height:180px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-top:14px}
+#log .ok{color:var(--ok)} #log .warn{color:var(--warn)} #log .err{color:var(--err)} #log .dim{color:var(--muted)}
+.warnbox{border-left:3px solid var(--warn);padding:8px 12px;background:var(--bg);border-radius:6px;font-size:13px;margin-bottom:10px}
+.alarmbar{background:var(--danger);color:#fff;padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-weight:600}
+.alarmbar button{background:#fff;color:var(--danger);border-color:#fff}
+[hidden]{display:none!important}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
+.modal-box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;max-width:520px;width:100%;max-height:90vh;overflow:auto}
+.dots{display:flex;gap:6px;margin-bottom:10px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--line)}
+.dot.done{background:var(--ok)} .dot.cur{background:var(--accent)}
+.jog{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0}
+.sum{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0}
+.sum td{padding:5px 4px;border-bottom:1px solid var(--line)} .sum td:first-child{color:var(--muted);width:40%}
+
+/* ---- calibration dialog, tracing ---- */
+label.f>span b{font-weight:600;color:var(--ink)}
+.ver{font-size:11px;font-weight:600;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:1px 5px;vertical-align:middle}
+.spinner{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin:10px 0}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.spinner{animation:none}}
+#traceCanvas{height:300px}
+/* ---- smart controller ---- */
+.grid label.f{min-width:0}
+.grid input[type=range],.grid select{width:100%}
+input[type=range]{max-width:100%}
+.smartgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start}
+@media (max-width:900px){.smartgrid{grid-template-columns:1fr}}
+.cam{position:relative;width:100%;aspect-ratio:4/3;background:#000;border-radius:10px;overflow:hidden}
+.cam video,.cam canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.mirror{transform:scaleX(-1)}
+.chip{font-size:12px;padding:3px 9px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.chip.ok{color:var(--ok);border-color:var(--ok)} .chip.busy{color:var(--warn);border-color:var(--warn)} .chip.bad{color:var(--err);border-color:var(--err)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chipbox{font-size:13px;border:1px solid var(--line);border-radius:99px;padding:4px 10px;display:flex;gap:6px;align-items:center;cursor:pointer}
+.small-label{font-size:13px;display:flex;gap:6px;align-items:center}
+.rrow{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px;flex-wrap:wrap}
+.rrow label{display:flex;gap:6px;align-items:center;flex:1;min-width:180px}
+.rrow button{padding:4px 10px}
+.bar-row{display:grid;grid-template-columns:84px 1fr;gap:8px;align-items:center;font-size:13px;margin:4px 0}
+.bar-row.cur span{font-weight:700;color:var(--accent)}
+.mbar{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.mbar>div{height:100%;background:var(--accent);transition:width .1s}
+canvas.eyes{width:100%;height:190px;display:block;border-radius:10px;border:1px solid var(--line);background:var(--panel)}
+#smartActivity{font-size:12px}
+/* ---- placement & live pen ---- */
+:root{--zone:rgba(22,163,74,.13);--zoneLine:#16a34a;--laser:#e11d1d}
+:root[data-theme="dark"]{--zone:rgba(74,222,128,.12);--zoneLine:#4ade80;--laser:#ff5a5a}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--zone:rgba(74,222,128,.12);--zoneLine:#4ade80;--laser:#ff5a5a}}
+.pair{display:flex;gap:6px;align-items:center}
+.pair input[type=range]{flex:1;min-width:120px;width:auto}
+.pair input[type=number]{width:80px}
+.unit{font-size:12px;color:var(--muted)}
+label.f.grow{flex:1 1 260px}
+canvas.world.plot{height:560px;margin-top:6px;cursor:default}
+canvas.world.plot:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.zone-key{color:var(--zoneLine)} .laser-key{color:var(--laser)}
+@media (max-width:640px){
+  canvas.world.plot{height:360px}
+  main{padding:12px}
+  canvas.world{height:340px}
+  .pose{min-width:100%;order:3}
+  input[type=range]{width:100%}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Magician Smart Controller <span class="ver">v1.0.0</span></h1>
+  <span id="pill" class="pill">Not connected</span>
+  <button id="btnConnect" class="primary">Connect USB</button>
+  <button id="btnSim">Simulator</button>
+  <div id="pose" class="pose">—</div>
+  <span id="smartActivity" class="pill sim" hidden></span>
+  <button id="btnCentre">Centre (home)</button>
+  <button id="btnStop" class="estop">STOP</button>
+</header>
+<div id="alarmBar" class="alarmbar" hidden><span id="alarmText"></span><button id="btnClearAlarm">Clear alarm &amp; re-arm</button></div>
+<nav>
+  <button id="nav-mouse" data-tab="mouse" class="active">Mouse control</button>
+  <button id="nav-plot" data-tab="plot">Plotter</button>
+  <button id="nav-rec" data-tab="rec">Record &amp; learn</button>
+  <button id="nav-dance" data-tab="dance">Dance</button>
+  <button id="nav-imit" data-tab="imit">Imitate</button>
+  <button id="nav-react" data-tab="react">Face &amp; reactions</button>
+  <button id="nav-setup" data-tab="setup">Setup</button>
+</nav>
+<main>
+
+<!-- ============ MOUSE ============ -->
+<section id="tab-mouse" class="tab active">
+  <div class="card">
+    <h3>Move the arm with the mouse</h3>
+    <canvas id="mouseCanvas" class="world"></canvas>
+    <div class="row">
+      <button id="btnLive">Live follow: OFF</button>
+      <button id="btnPenUp">Pen up</button>
+      <button id="btnPenDown">Pen down</button>
+      <button id="btnHome">Home</button>
+      <button id="btnSuction">Suction: OFF</button>
+      <button id="btnGripper">Gripper: open</button>
+      <button id="btnCalibrate2">Calibrate limits</button>
+    </div>
+    <div class="row">
+      <label class="f" style="min-width:300px"><span>Z height <b id="zVal">0</b></span>
+        <input id="zSlider" type="range" min="-30" max="150" step="0.5" value="0"></label>
+    </div>
+    <div id="hover" class="stats">cursor —</div>
+    <div class="hint">Click a point to move there. Turn on <b>Live follow</b> and drag to make the tip follow the mouse. Scroll wheel = Z (1 mm per notch). Arrow keys = X/Y, PageUp/PageDown = Z (Shift = 10 mm, Alt = 0.1 mm). Every target is clamped to the reach limits in Setup.</div>
+  </div>
+</section>
+
+<!-- ============ PLOTTER ============ -->
+<section id="tab-plot" class="tab">
+  <div class="card">
+    <h3>Load a drawing or picture</h3>
+    <div id="plot-drop" class="drop">Drop an <b>SVG</b> or a <b>picture</b> (PNG, JPG, WEBP, GIF, BMP) here, or
+      <input id="plot-file" type="file" accept=".svg,image/svg+xml,image/*" style="margin-left:6px">
+      <div id="plot-file-name" class="muted" style="margin-top:6px">no file loaded</div>
+    </div>
+    <details style="margin-top:10px"><summary class="muted">…or paste SVG markup</summary>
+      <textarea id="plot-text" placeholder="&lt;svg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 100 100&quot;&gt;…&lt;/svg&gt;"></textarea>
+      <div class="row"><button id="btnLoadText">Use pasted SVG</button></div>
+    </details>
+  </div>
+
+  <div id="traceCard" class="card" hidden>
+    <h3>Picture to lines</h3>
+    <canvas id="traceCanvas" class="small"></canvas>
+    <div class="grid">
+      <label class="f">Type of picture
+        <select id="tr-mode">
+          <option value="outline">Shapes — trace outlines</option>
+          <option value="centre">Line drawing / text — one line down the middle</option>
+          <option value="edges">Photo — trace edges</option>
+        </select></label>
+      <label class="f"><span>Threshold <b id="tr-thrVal"></b></span><input id="tr-thr" type="range" min="1" max="254" step="1" value="128"></label>
+      <label class="f"><span>Detail <b id="tr-detailVal"></b></span><input id="tr-detail" type="range" min="1" max="10" step="1" value="6"></label>
+      <label class="f"><span>Curves (straight ↔ smooth) <b id="tr-curveVal"></b></span><input id="tr-curve" type="range" min="0" max="10" step="1" value="4"></label>
+      <label class="f">Resolution
+        <select id="tr-res"><option value="300">Low (300 px)</option><option value="600" selected>Medium (600 px)</option><option value="900">High (900 px)</option></select></label>
+    </div>
+    <div class="row">
+      <label class="small-label"><input id="tr-auto" type="checkbox" checked> Automatic threshold</label>
+      <label class="small-label"><input id="tr-invert" type="checkbox"> Light lines on a dark background</label>
+    </div>
+    <div class="row">
+      <button id="btnTraceUse" class="primary">Use these lines</button>
+      <button id="btnTraceSvg">Download SVG</button>
+      <span id="tr-stats" class="muted"></span>
+    </div>
+    <div class="hint">Threshold decides what counts as ink (darker than the threshold). Detail drops specks and small wiggles at low settings and keeps fine features at high ones. Curves at 0 keeps every corner sharp; higher values round off corners and wobbles, keeping only sharp spikes.</div>
+  </div>
+
+  <div class="card">
+    <h3>Where on the paper</h3>
+    <div class="row">
+      <label class="f grow"><span>Size — longest side <b id="pl-sizeVal"></b></span>
+        <span class="pair"><input id="pl-size" type="range" min="5" max="300" step="1" value="100" aria-label="Size"><input id="pl-sizeNum" type="number" min="5" max="400" step="0.5" value="100" aria-label="Size in millimetres"><span class="unit">mm</span></span></label>
+      <label class="f grow"><span>Rotation <b id="pl-rotVal"></b></span>
+        <span class="pair"><input id="pl-rot" type="range" min="-180" max="180" step="1" value="0" aria-label="Rotation"><input id="pl-rotNum" type="number" min="-180" max="180" step="0.5" value="0" aria-label="Rotation in degrees"><span class="unit">°</span></span></label>
+    </div>
+    <div class="row">
+      <button id="btnRot90" title="Turn 90° clockwise">↻ 90°</button>
+      <label class="small-label"><input id="plot-mirror" type="checkbox"> Mirror</label>
+      <button id="btnPlCentre" title="Straight in front of the arm, in the middle of the green zone">Centre</button>
+      <button id="btnPlLargest" title="As big as the green zone allows at this rotation">Largest</button>
+      <label class="f">Safety margin (mm)<input id="plot-margin" type="number" value="6" step="1" min="0" max="30"></label>
+    </div>
+    <canvas id="plotCanvas" class="world plot" tabindex="0" aria-label="Paper map. Drag the drawing to move it."></canvas>
+    <div id="pl-info" class="stats"></div>
+    <div class="hint"><b class="zone-key">Green</b> = where the pen can draw (from Auto-calibrate). Drag the drawing to move it, a corner square to resize it, the round knob to turn it — every line stays inside the green zone (the dashed box is only the handle and may stick out). With the map selected: arrow keys move it 1 mm (Shift: 10 mm), + and − resize, [ and ] turn. <b class="laser-key">Red dot</b> = the pen, live; <b class="laser-key">red lines</b> = what has been drawn on this sheet. Dotted grey = pen-up travel.</div>
+  </div>
+
+  <div class="card">
+    <h3>Drawing</h3>
+    <div class="row">
+      <label class="f">Motion
+        <select id="plot-motion">
+          <option value="smooth">Smooth — continuous lines (recommended)</option>
+          <option value="precise">Precise — stop at every point</option>
+        </select></label>
+      <label class="f">Pen speed (mm/s)<input id="plot-speed" type="number" min="5" max="300" step="5"></label>
+      <label class="f">Travel speed, pen up (mm/s)<input id="plot-travel" type="number" min="5" max="300" step="5"></label>
+    </div>
+    <div class="row">
+      <button id="btnDraw" class="primary">Draw</button>
+      <button id="btnPause" disabled>Pause</button>
+      <button id="btnTestSquare">Test square (20 mm)</button>
+      <button id="btnBuild">Rebuild path</button>
+      <button id="btnExportOps" class="ghost">Export path (JSON)</button>
+      <button id="btnNewSheet" class="ghost" title="Clear the red lines after putting in a fresh sheet of paper">New sheet</button>
+    </div>
+    <div id="plot-stats" class="stats">Load a drawing or a picture to start.</div>
+    <div class="bar"><div id="plot-bar"></div></div>
+    <details style="margin-top:10px"><summary class="muted">Advanced</summary>
+      <div class="row">
+        <label class="f">Simplify tolerance (mm)<input id="plot-tol" type="number" value="0.15" step="0.05" min="0"></label>
+        <label class="f">Drop strokes shorter than (mm)<input id="plot-minlen" type="number" value="1" step="0.5" min="0"></label>
+        <label class="f">Join gap, no pen lift (mm)<input id="plot-join" type="number" value="0.5" step="0.1" min="0"></label>
+        <label class="f">Ordering time budget (ms)<input id="plot-opt" type="number" value="1500" step="250" min="0"></label>
+        <label class="f">Smooth-mode acceleration (mm/s²)<input id="plot-cpacc" type="number" value="150" step="10" min="20" max="400"></label>
+      </div>
+      <div class="hint">Smooth mode sends the pen path as continuous-path (CP) moves, which the Magician blends without stopping, at the pen speed. Pen-up travel is a straight move at the travel speed, so the pen keeps its height. If lines look wobbly, lower the pen speed or the acceleration.</div>
+    </details>
+  </div>
+
+</section>
+
+<!-- ============ RECORD & LEARN ============ -->
+<section id="tab-rec" class="tab">
+  <div class="card">
+    <h3>Record takes</h3>
+    <div class="row">
+      <button id="btnRec" class="primary">Record take</button>
+      <button id="btnWaypoint">Add waypoint</button>
+      <span id="recCount" class="muted"></span>
+    </div>
+    <div class="hint">While recording, the arm's real position is sampled about 7 times a second. Move it with the Mouse tab, arrow keys or Z slider. Each recording becomes a take.</div>
+    <div id="takeList" style="margin-top:8px"></div>
+    <div class="bar"><div id="rec-bar"></div></div>
+  </div>
+
+  <div class="card">
+    <h3>Learn a repeated movement</h3>
+    <div class="row">
+      <label class="f">Samples per path<input id="rec-samples" type="number" value="120" step="10" min="20"></label>
+      <button id="btnLearn">Learn from selected takes</button>
+    </div>
+    <div id="learn-stats" class="stats"></div>
+    <div class="hint">Takes are time-aligned by distance travelled and averaged. Blue line = learned path. Shaded circles = spread between takes, so you can see where your repetitions disagree.</div>
+  </div>
+
+  <div class="card">
+    <h3>Replay</h3>
+    <div class="row">
+      <label class="f">Repeats<input id="rec-reps" type="number" value="3" min="1" step="1"></label>
+      <label class="f">Pause between repeats (ms)<input id="rec-pause" type="number" value="500" min="0" step="100"></label>
+      <button id="btnPlayLearned" class="primary">Play learned movement</button>
+    </div>
+    <div class="row">
+      <button id="btnExportTakes">Export takes (JSON)</button>
+      <label class="f">Import takes<input id="takes-file" type="file" accept=".json,application/json"></label>
+      <button id="btnClearTakes" class="ghost">Clear all</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <canvas id="recCanvas" class="world"></canvas>
+    <div class="hint">Grey = takes you selected. Orange = take being recorded. Blue = learned path.</div>
+  </div>
+</section>
+
+<!-- ============ DANCE ============ -->
+<section id="tab-dance" class="tab">
+  <div class="card">
+    <h3>Music</h3>
+    <div class="row">
+      <label class="f">Source
+        <select id="danceSrc">
+          <option value="file">Music file (best timing)</option>
+          <option value="mic">Microphone (live)</option>
+          <option value="metro">Metronome / tap tempo</option>
+        </select></label>
+      <label class="f src-file">Song<input id="danceFile" type="file" accept="audio/*"></label>
+      <label class="f src-metro">Tempo (BPM)<input id="danceBpm" type="number" value="110" min="40" max="220" step="0.5"></label>
+      <button id="btnTap" class="src-metro">Tap tempo</button>
+      <label class="src-metro small-label"><input id="danceClick" type="checkbox" checked> Click sound</label>
+      <label class="f src-metro">Energy<input id="danceMetroEnergy" type="range" min="0" max="1" step="0.05" value="0.6"></label>
+    </div>
+    <audio id="danceAudio" controls class="src-file" style="width:100%;margin-top:6px"></audio>
+    <div class="hint src-mic">Play music near the Mac. The app listens for about 4 seconds to lock onto the beat before it starts moving.</div>
+    <div id="danceInfo" class="stats">Load a song, or use the microphone or metronome.</div>
+  </div>
+  <div class="card">
+    <h3>Dance</h3>
+    <canvas id="danceCanvas" class="small"></canvas>
+    <div class="row"><button id="btnDance" class="primary">Start dancing</button></div>
+    <div class="grid">
+      <label class="f"><span>Move size (mm) <b id="danceSizeVal"></b></span><input id="danceSize" type="range" min="8" max="60" step="1" value="30"></label>
+      <label class="f"><span>Energy <b id="danceEnergyVal"></b></span><input id="danceEnergy" type="range" min="0.3" max="1.5" step="0.05" value="1"></label>
+      <label class="f"><span>Latency compensation (ms) <b id="danceLatencyVal"></b></span><input id="danceLatency" type="range" min="0" max="400" step="10" value="150"></label>
+      <label class="f"><span>Arm speed (mm/s) <b id="danceSpeedVal"></b></span><input id="danceSpeed" type="range" min="80" max="320" step="10" value="220"></label>
+      <label class="f">Choreography seed<input id="danceSeed" type="number" value="7" step="1"></label>
+    </div>
+    <div class="row">
+      <button id="btnDanceCentre">Dance around current position</button>
+      <button id="btnDanceCentreReset" class="ghost">Automatic centre</button>
+    </div>
+    <h3 style="margin-top:12px">Moves</h3>
+    <div id="moveChips" class="chips"></div>
+    <div class="hint">Songs are analysed on this Mac: tempo, beats and loudness. Quiet passages get calm moves (sway, nod, wave, circle); loud ones get energetic moves (robot, pump, disco, head bang). Every move is a keyframe on a beat; if the arm lands late, raise the latency compensation. A different seed gives a different dance to the same song.</div>
+  </div>
+</section>
+
+<!-- ============ IMITATE ============ -->
+<section id="tab-imit" class="tab">
+  <div class="smartgrid">
+    <div id="camSlot-imit">
+      <div id="camCard" class="card">
+        <h3>Camera</h3>
+        <div class="cam"><video id="camVideo" playsinline muted></video><canvas id="camOverlay"></canvas></div>
+        <div class="row">
+          <button id="btnCam">Camera on</button>
+          <label class="small-label"><input type="checkbox" id="camMirror" checked> Mirror view</label>
+          <label class="small-label"><input type="checkbox" id="camOverlayToggle" checked> Show tracking</label>
+          <span id="camFps" class="muted">camera off</span>
+        </div>
+        <div id="camModels" class="row"></div>
+        <div class="hint">Video is analysed inside Chrome on this Mac and is never uploaded. The first start downloads the MediaPipe library and models (about 4–11 MB each); after that the browser keeps them cached.</div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h3>Imitate me</h3>
+        <div class="row">
+          <label class="f" style="min-width:min(100%,320px)">Mode
+            <select id="imitMode">
+              <option value="hand">Hand mirror: the tip follows your hand</option>
+              <option value="arm">Arm mirror: the robot copies your arm</option>
+              <option value="air">Air drawing: pinch to draw on paper</option>
+              <option value="teach">Teach by showing: record a movement</option>
+            </select></label>
+        </div>
+        <div class="row">
+          <button id="btnImit" class="primary">Start imitating</button>
+          <button id="btnImitCal" class="im-hand im-air im-teach">Set hand centre</button>
+        </div>
+        <div id="imitStatus" class="stats">Stopped.</div>
+        <div class="grid">
+          <label class="f">Direction
+            <select id="imitFacing"><option value="facing">Robot faces me (mirror)</option><option value="same">Robot faces away (same side)</option></select></label>
+          <label class="f"><span>Hand range <b id="imitSpanVal"></b></span><input id="imitSpan" type="range" min="0.2" max="0.9" step="0.05" value="0.5"></label>
+          <label class="f"><span>Smoothing <b id="imitSmoothVal"></b></span><input id="imitSmooth" type="range" min="0.2" max="3" step="0.1" value="1"></label>
+          <label class="f im-hand im-teach">Pinch action
+            <select id="imitPinch"><option value="none">Nothing</option><option value="gripper">Close gripper</option><option value="suction">Suction on</option></select></label>
+          <label class="f im-arm">Arm
+            <select id="imitSide"><option value="right">My right arm</option><option value="left">My left arm</option></select></label>
+        </div>
+        <div class="row">
+          <label class="im-air small-label"><input id="imitLivePen" type="checkbox"> Draw live on paper while I draw</label>
+          <label class="im-teach small-label"><input id="imitTeachFollow" type="checkbox" checked> Arm follows while recording</label>
+        </div>
+        <div class="hint">Make a fist for half a second to freeze or unfreeze the arm. If your hand or arm leaves the view, the robot holds still. Smaller “hand range” = bigger robot moves for the same hand movement. Esc stops everything.</div>
+      </div>
+      <div class="card im-air">
+        <h3>Air drawing</h3>
+        <canvas id="airCanvas" class="small"></canvas>
+        <div class="row">
+          <span id="airCount" class="muted">0 strokes</span>
+          <button id="btnAirClear" class="ghost">Clear</button>
+          <button id="btnAirSend" class="primary">Send to Plotter</button>
+        </div>
+        <div class="hint">Pinch thumb and index finger to put the pen down; open them to lift it. Strokes land in the Plotter's drawing area with the same orientation as its preview, then get the same path optimisation.</div>
+      </div>
+      <div class="card im-teach">
+        <h3>Teach by showing</h3>
+        <div class="row"><button id="btnTeach" class="primary">Record a movement</button><span id="teachCount" class="muted"></span></div>
+        <div class="hint">After a 3-second countdown your hand path is recorded (up to 30 s) and saved as a take in Record &amp; learn. Show the same movement a few times, then use “Learn from selected takes” to average them.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ REACTIONS ============ -->
+<section id="tab-react" class="tab">
+  <div class="smartgrid">
+    <div id="camSlot-react"></div>
+    <div>
+      <div class="card">
+        <h3>Robot face</h3>
+        <canvas id="eyesCanvas" class="eyes"></canvas>
+        <div class="row">
+          <button id="btnReact" class="primary">Start face reading</button>
+          <button id="btnNeutral">Capture my neutral face</button>
+        </div>
+        <div id="exprBars"><div class="muted">Face reading is off.</div></div>
+      </div>
+      <div class="card">
+        <h3>Behaviour</h3>
+        <div class="row">
+          <label class="small-label"><input id="reactFace" type="checkbox" checked> React to my face</label>
+          <label class="small-label"><input id="reactHands" type="checkbox" checked> React to hand signs</label>
+          <label class="small-label"><input id="reactLook" type="checkbox"> Look at me (follow my face)</label>
+        </div>
+        <div class="grid">
+          <label class="f">Sensitivity<input id="reactSens" type="range" min="0.6" max="1.6" step="0.05" value="1"></label>
+          <label class="f">Pause between reactions (s)<input id="reactCooldown" type="number" min="0.5" max="10" step="0.5" value="2.5"></label>
+          <label class="f">Reaction size (mm)<input id="reactAmp" type="number" min="5" max="60" step="5" value="30"></label>
+          <label class="f">Look-at-me range<input id="reactLookGain" type="range" min="0.4" max="2" step="0.1" value="1"></label>
+        </div>
+        <div id="reactTable" style="margin-top:8px"></div>
+        <div id="reactEvents" class="stats"></div>
+        <div class="hint">Press “Capture my neutral face” once while relaxed: expressions are then measured against your own resting face, which makes smiles and frowns far more reliable. Reactions play around the arm's current position and always return to it.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SETUP ============ -->
+<section id="tab-setup" class="tab">
+  <div class="card">
+    <h3>Connection</h3>
+    <div class="row">
+      <button id="btnConnect2" class="primary" onclick="document.getElementById('btnConnect').click()">Connect USB</button>
+      <button onclick="document.getElementById('btnSim').click()">Start simulator</button>
+    </div>
+    <div class="warnbox">Use <b>Google Chrome</b> or <b>Microsoft Edge</b> — they support USB serial. Safari and Firefox cannot connect to the robot. Close DobotStudio or any other program that is using the arm's serial port.</div>
+    <div class="row"><label style="font-size:13px"><input id="dbgFrames" type="checkbox"> Show raw protocol frames in log (debugging)</label></div>
+  </div>
+
+  <div class="card">
+    <h3>Safety limits and calibration</h3>
+    <div class="warnbox">These defaults are conservative starting values, not measurements from your unit. Before drawing: set the <b>min/max reach</b> and <b>Z range</b> to match your calibration, lower the tip by hand (Mouse tab, Z slider) until it just touches the paper, then press <b>Set pen-down = current Z</b>.</div>
+    <div class="grid">
+      <label class="f">Min reach (mm)<input id="lim-minR" type="number" step="1"></label>
+      <label class="f">Max reach (mm)<input id="lim-maxR" type="number" step="1"></label>
+      <label class="f">Z min (mm)<input id="lim-zMin" type="number" step="1"></label>
+      <label class="f">Z max (mm)<input id="lim-zMax" type="number" step="1"></label>
+      <label class="f">Pen-up Z (mm)<input id="lim-zUp" type="number" step="0.5"></label>
+      <label class="f">Pen-down Z (mm)<input id="lim-zDown" type="number" step="0.5"></label>
+      <label class="f">Home X<input id="home-x" type="number" step="1"></label>
+      <label class="f">Home Y<input id="home-y" type="number" step="1"></label>
+      <label class="f">Home Z<input id="home-z" type="number" step="1"></label>
+      <label class="f">Base angle min (°)<input id="lim-thMin" type="number" step="1"></label>
+      <label class="f">Base angle max (°)<input id="lim-thMax" type="number" step="1"></label>
+    </div>
+    <div class="row">
+      <button id="btnSetPenUp">Pen-up = current Z</button>
+      <button id="btnSetPenDown">Pen-down = current Z</button>
+      <button id="btnAutoCal" class="primary">Auto-calibrate…</button>
+      <button id="btnCalibrate">Manual calibration…</button>
+    </div>
+    <div id="modelStatus" class="stats">Not calibrated yet.</div>
+    <div class="hint">Auto-calibrate homes the arm, checks its joint readings against the Magician's geometry (rear arm 135 mm, forearm 147 mm, joint limits) and computes where it can reach at every height; you only lower the pen onto the paper. Manual calibration jogs the arm to its ends instead. With auto-calibration, every move is checked against the real reach at its height; min/max reach here set the area the smart modes use.</div>
+  </div>
+
+  <div class="card">
+    <h3>Speeds (mm/s)</h3>
+    <div class="grid">
+      <label class="f">Mouse / live<input id="spd-live" type="number" step="5"></label>
+      <label class="f">Acceleration<input id="spd-accel" type="number" step="5"></label>
+      <label class="f">Pen speed, drawing / replay<input id="spd-draw" type="number" step="5"></label>
+      <label class="f">Travel speed, pen up<input id="spd-travel" type="number" step="5"></label>
+      <label class="f">Smart modes (imitate, reactions)<input id="spd-smart" type="number" step="5"></label>
+    </div>
+    <div class="row">
+      <button id="btnSaveSetup" class="primary">Save settings</button>
+      <button id="btnResetSetup" class="ghost">Restore defaults</button>
+    </div>
+    <div class="hint">Settings are remembered in this browser. Drawing speed is slower than live follow for cleaner lines.</div>
+  </div>
+
+  <div class="card">
+    <h3>Vision models</h3>
+    <div class="hint">The camera features use Google MediaPipe 0.10.35 (pinned on purpose: newer 1.x builds send usage metrics with no opt-out). The library comes from jsDelivr and the face, hand and body models from Google the first time a camera feature starts. For offline use, download <code>face_landmarker.task</code>, <code>gesture_recognizer.task</code> and <code>pose_landmarker_lite.task</code> once and pick them here.</div>
+    <div class="row"><label class="f">Local model files (.task)<input id="modelFiles" type="file" accept=".task" multiple></label></div>
+    <div class="row"><button id="btnSelfTest">Test camera features</button></div>
+    <div id="selfTestResult" class="stats">Loads the face, hand and body models, runs the camera for 3 seconds and checks the beat tracker. Uses the simulator; the arm does not move.</div>
+  </div>
+</section>
+
+<div id="autocal" class="modal" hidden><div class="modal-box"><div id="autocalBody"></div></div></div>
+<div id="wizard" class="modal" hidden><div class="modal-box"><div id="wizBody"></div></div></div>
+<div id="log"></div>
+</main>
+
+<script>
+</script>
+</body>
+</html>

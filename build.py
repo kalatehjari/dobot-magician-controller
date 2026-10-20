@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+"""Builds the single-file app: joins the scripts in src/ (in this order) into src/part7_shell.html and
+writes magician-smart-controller.html at the repository root. No dependencies: python3 build.py"""
+import collections, pathlib, re
+
+ROOT = pathlib.Path(__file__).resolve().parent
+SRC = ROOT / 'src'
+ORDER = [
+    'part0_alarms.js',
+    'part1_protocol.js',
+    'part2_geometry.js',
+    'part31_kinematics.js',
+    'part36_place.js',
+    'part32_trace.js',
+    'part3_svg.js',
+    'part4_ui_core.js',
+    'part5_plotter_record.js',
+    'part8_calibrate.js',
+    'part33_autocal.js',
+    'part20_smart_math.js',
+    'part21_moves.js',
+    'part22_beat.js',
+    'part23_vision.js',
+    'part24_motion.js',
+    'part25_dance.js',
+    'part26_imitate.js',
+    'part27_react.js',
+    'part6_wiring.js',
+    'part28_smart_wiring.js',
+    'part30_selftest.js',
+    'part34_plot_ui.js',
+    'part37_place_ui.js',
+]
+
+js = '\n'.join((SRC / name).read_text(encoding='utf-8') for name in ORDER)
+shell = (SRC / 'part7_shell.html').read_text(encoding='utf-8')
+assert shell.count('<script>\n</script>') == 1, 'the shell must contain exactly one empty <script> block'
+html = shell.replace('<script>\n</script>', '<script>\n' + js + '\n</script>')
+out = ROOT / 'magician-smart-controller.html'
+out.write_text(html, encoding='utf-8', newline='\n')
+
+# sanity checks: every element the script looks up exists, and no id is used twice
+ids = re.findall(r'id="([^"]+)"', html)
+dups = [k for k, v in collections.Counter(ids).items() if v > 1]
+refs = set(re.findall(r"(?:getElementById|\$id|\$pl)\('([^']+)'\)", js))
+missing = sorted(r for r in refs if r not in set(ids))
+print(f'built {out.name}: {len(html.encode())} bytes; duplicate ids: {dups or "none"}; missing ids: {missing or "none"}')
+if dups or missing:
+    raise SystemExit(1)

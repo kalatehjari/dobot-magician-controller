@@ -1,0 +1,11 @@
+{
+  "name": "dobot-magician-controller",
+  "version": "1.0.0",
+  "description": "Control a Dobot Magician robot arm from Chrome or Edge over USB (Web Serial): plotter, mouse control, record & learn, dance, imitation and face reactions.",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "build": "python3 build.py",
+    "test": "node tests/unit/run_all.js"
+  }
+}
