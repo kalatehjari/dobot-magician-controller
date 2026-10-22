@@ -1,7 +1,7 @@
 {
   "name": "dobot-magician-controller",
-  "version": "1.0.0",
-  "description": "Control a Dobot Magician robot arm from Chrome or Edge over USB (Web Serial): plotter, mouse control, record & learn, dance, imitation and face reactions.",
+  "version": "1.4.0",
+  "description": "Control a Dobot Magician robot arm from Chrome or Edge over USB (Web Serial): plotter with a 2 245-drawing library, text, shading and several objects per sheet, mouse control, record & learn, dance, imitation and face reactions.",
   "private": true,
   "license": "MIT",
   "scripts": {

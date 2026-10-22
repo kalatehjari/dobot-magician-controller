@@ -11,6 +11,10 @@ ORDER = [
     'part2_geometry.js',
     'part31_kinematics.js',
     'part36_place.js',
+    'part38_smooth.js',
+    'part42_shade.js',
+    'part44_fonts_data.js',
+    'part45_text.js',
     'part32_trace.js',
     'part3_svg.js',
     'part4_ui_core.js',
@@ -30,6 +34,12 @@ ORDER = [
     'part30_selftest.js',
     'part34_plot_ui.js',
     'part37_place_ui.js',
+    'part39_smooth_ui.js',
+    'part40_library_data.js',
+    'part41_library_ui.js',
+    'part43_shade_ui.js',
+    'part46_objects_ui.js',
+    'part47_text_ui.js',
 ]
 
 js = '\n'.join((SRC / name).read_text(encoding='utf-8') for name in ORDER)
