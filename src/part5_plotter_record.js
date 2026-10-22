@@ -33,7 +33,7 @@ async function runJob(name, cmds, progressEl, opts = {}) {
 }
 
 function showTab(name) {
-  for (const t of ['mouse', 'plot', 'rec', 'dance', 'imit', 'react', 'setup']) {
+  for (const t of ['mouse', 'plot', 'rec', 'dance', 'imit', 'react', 'print', 'setup']) {
     document.getElementById('tab-' + t).classList.toggle('active', t === name);
     document.getElementById('nav-' + t).classList.toggle('active', t === name);
   }
@@ -50,6 +50,7 @@ function drawAll() {
   if (document.getElementById('tab-dance').classList.contains('active')) drawDance();
   if (document.getElementById('tab-imit').classList.contains('active')) drawAir();
   if (document.getElementById('tab-react').classList.contains('active')) drawEyes();
+  if (document.getElementById('tab-print').classList.contains('active') && typeof p3Draw === 'function') p3Draw();
 }
 
 /* ===================== PLOTTER ===================== */

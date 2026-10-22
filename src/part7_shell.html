@@ -164,7 +164,18 @@ pre.tx-lic{white-space:pre-wrap;font:11px/1.4 ui-monospace,Menlo,monospace;backg
 .lib-credit-body h4{font-size:12.5px;color:var(--ink);margin:12px 0 4px}
 .lib-credit-body p{margin:4px 0}
 .lib-catlabel select{min-width:220px}
+/* ---- 3D printing ---- */
+canvas.world.pr-view{height:460px;cursor:grab;margin-top:6px}
+.pr-legend{margin-top:8px}
+.pr-legend .chip i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.pr-steps{font-size:13px;margin:8px 0 4px;padding-left:20px}
+.pr-steps li{margin:4px 0}
+.pr-check{margin:8px 0;align-items:flex-start}
+.pr-check input{margin-top:3px}
+#pr-warn .warnbox{margin:8px 0 0}
+#pr-temp.hot{color:var(--danger);border-color:var(--danger)}
 @media (max-width:640px){
+  canvas.world.pr-view{height:320px}
   .lib-grid{grid-template-columns:repeat(auto-fill,minmax(78px,1fr));max-height:300px}
   .tx-fonts{grid-template-columns:repeat(auto-fill,minmax(92px,1fr))}
   .obj-name{max-width:200px}
@@ -178,7 +189,7 @@ pre.tx-lic{white-space:pre-wrap;font:11px/1.4 ui-monospace,Menlo,monospace;backg
 </head>
 <body>
 <header>
-  <h1>Magician Smart Controller <span class="ver">v1.4.0</span></h1>
+  <h1>Magician Smart Controller <span class="ver">v1.5.0</span></h1>
   <span id="pill" class="pill">Not connected</span>
   <button id="btnConnect" class="primary">Connect USB</button>
   <button id="btnSim">Simulator</button>
@@ -195,6 +206,7 @@ pre.tx-lic{white-space:pre-wrap;font:11px/1.4 ui-monospace,Menlo,monospace;backg
   <button id="nav-dance" data-tab="dance">Dance</button>
   <button id="nav-imit" data-tab="imit">Imitate</button>
   <button id="nav-react" data-tab="react">Face &amp; reactions</button>
+  <button id="nav-print" data-tab="print">3D print</button>
   <button id="nav-setup" data-tab="setup">Setup</button>
 </nav>
 <main>
@@ -621,6 +633,125 @@ pre.tx-lic{white-space:pre-wrap;font:11px/1.4 ui-monospace,Menlo,monospace;backg
   </div>
 </section>
 
+<!-- ============ 3D PRINT ============ -->
+<section id="tab-print" class="tab">
+  <div class="card">
+    <h3>3D printer <span id="pr-pill" class="pill">Not connected</span></h3>
+    <div class="warnbox">3D printing needs the <b>Dobot 3D-printing kit</b> (hot end on the forearm: heater on interface 4, fan on 5, temperature sensor on 6, extruder motor on Stepper1) and Dobot's <b>3D-printer firmware</b>. To put that firmware on the arm, open DobotStudio, choose <b>Tools → Open 3D Printing</b> and confirm; then close DobotStudio and Repetier Host so this page can use the USB port. The other tabs need DobotStudio's normal firmware again: when you next connect with DobotStudio it offers to switch back.</div>
+    <div class="row">
+      <button id="btnPrConnect" class="primary">Connect 3D printer (USB)</button>
+      <button id="btnPrSim">Printer simulator</button>
+      <label class="f">Simulator speed<select id="pr-simSpeed"><option value="1">Real time</option><option value="10">× 10</option><option value="100" selected>× 100</option><option value="1000">× 1000</option></select></label>
+      <span id="pr-temp" class="pill">Nozzle — °C</span>
+    </div>
+    <label class="small-label"><input id="pr-ahead" type="checkbox"> Send ahead into the printer's 63-byte buffer (as Repetier Host does) instead of one line at a time</label>
+    <div class="row">
+      <label class="f">Nozzle temperature (°C)<input id="pr-heatTo" type="number" min="170" max="250" step="5" value="200"></label>
+      <button id="btnPrHeat" disabled>Heat</button>
+      <button id="btnPrCool" disabled>Heater off</button>
+      <button id="btnPrFeed" disabled title="Pushes 10 mm of filament through the nozzle (only when it is hot)">Feed 10 mm</button>
+      <button id="btnPrBack" disabled title="Pulls the filament back 10 mm">Retract 10 mm</button>
+      <button id="btnPrFan" disabled>Fan on</button>
+      <button id="btnPrZero" disabled>Save nozzle height (Z zero)…</button>
+    </div>
+    <details id="pr-howto"><summary class="muted">Before the first print: filament, tape and the nozzle height</summary>
+      <ol class="pr-steps">
+        <li>Feed the filament through the extruder and the PTFE tube right down to the hot end (Dobot's guide: press the extruder lever, push the filament past the pulley, push the tube fully down and tighten the fitting).</li>
+        <li>Connect, press <b>Heat</b> and wait for 200 °C, then <b>Feed 10 mm</b> until molten plastic comes out of the nozzle. If it runs backwards, take the filament out and turn the extruder round.</li>
+        <li>Stick masking tape on the glass plate.</li>
+        <li>Hold the <b>unlock</b> button on the forearm and lower the nozzle until it just touches the tape — about a sheet of paper's thickness. Then press the <b>Key</b> button on the base, or <b>Save nozzle height</b> here (M415). A beep confirms it; the arm keeps it for later prints.</li>
+      </ol>
+    </details>
+    <div id="pr-msg" class="stats"></div>
+  </div>
+
+  <div class="card">
+    <h3>Model</h3>
+    <div id="pr-drop" class="drop">Drop an <b>STL</b> or <b>OBJ</b> file here, or
+      <input id="pr-file" type="file" accept=".stl,.obj,model/stl,model/obj" style="margin-left:6px">
+      <div id="pr-file-name" class="muted" style="margin-top:6px">no model loaded</div>
+    </div>
+    <div class="row">
+      <label class="f">…or a ready-made model<select id="pr-sample"><option value="">Choose a model…</option></select></label>
+      <label class="f">Units in the file<select id="pr-units"><option value="1">millimetres</option><option value="10">centimetres</option><option value="25.4">inches</option><option value="1000">metres</option></select></label>
+      <button id="btnPrStl" class="ghost" disabled title="Save the model as placed (turned and scaled) as an STL file">Download placed STL</button>
+    </div>
+    <div id="pr-info" class="stats"></div>
+    <div class="row">
+      <label class="f grow"><span>Scale <b id="pr-scaleVal"></b></span>
+        <span class="pair"><input id="pr-scale" type="range" min="10" max="400" step="1" value="100" aria-label="Scale"><input id="pr-scaleNum" type="number" min="1" max="5000" step="1" value="100" aria-label="Scale in per cent"><span class="unit">%</span></span></label>
+      <label class="f grow"><span>Turn on the plate <b id="pr-rotVal"></b></span>
+        <span class="pair"><input id="pr-rot" type="range" min="-180" max="180" step="1" value="0" aria-label="Turn"><input id="pr-rotNum" type="number" min="-180" max="180" step="1" value="0" aria-label="Turn in degrees"><span class="unit">°</span></span></label>
+    </div>
+    <div class="row">
+      <button id="btnPrTipX" title="Tip the model a quarter turn about X">Tip ↻ X</button>
+      <button id="btnPrTipY" title="Tip the model a quarter turn about Y">Tip ↻ Y</button>
+      <button id="btnPrFlat" title="Put the model's largest flat face on the plate">Lay flat</button>
+      <label class="small-label"><input id="pr-mirror" type="checkbox"> Mirror</label>
+      <button id="btnPrFit" title="As large as the plate and the height allow">Fit to plate</button>
+      <label class="f">Move X (mm)<input id="pr-x" type="number" step="1" value="0"></label>
+      <label class="f">Move Y (mm)<input id="pr-y" type="number" step="1" value="0"></label>
+      <button id="btnPrReset" class="ghost">Reset</button>
+    </div>
+    <div id="pr-fit" class="stats"></div>
+  </div>
+
+  <div class="card">
+    <h3>Preview</h3>
+    <div class="row">
+      <span class="chips" role="group" aria-label="View"><button id="pr-v3d" class="on">3D</button><button id="pr-vLayer">One layer</button></span>
+      <label class="f grow"><span>Show up to layer <b id="pr-layerVal">—</b></span><input id="pr-layer" type="range" min="0" max="0" value="0" disabled aria-label="Layer"></label>
+      <label class="small-label"><input id="pr-travel" type="checkbox"> Travel moves</label>
+    </div>
+    <canvas id="prCanvas" class="world pr-view" aria-label="Print preview. Drag to turn, scroll to zoom, double-click to reset."></canvas>
+    <div id="pr-legend" class="chips pr-legend"></div>
+    <div class="hint">Drag to turn the view (in <b>One layer</b>: to move it), scroll to zoom, double-click to reset. Before slicing you see the model on the round plate (red when it does not fit); after slicing, every line the nozzle will lay down, coloured by kind.</div>
+  </div>
+
+  <div class="card">
+    <h3>Print settings</h3>
+    <div class="row">
+      <label class="f">Quality<select id="pr-preset"></select></label>
+      <label class="f">Supports<select id="ps-support"><option value="off">None</option><option value="plate">Only from the plate</option><option value="all">Everywhere</option></select></label>
+      <label class="f">Infill pattern<select id="ps-pattern"><option value="lines">Lines (crossing each layer)</option><option value="grid">Grid</option></select></label>
+      <label class="small-label"><input id="ps-vase" type="checkbox"> Vase (one spiral wall)</label>
+      <label class="small-label"><input id="ps-fan" type="checkbox" checked> Fan on</label>
+    </div>
+    <div id="ps-main" class="grid"></div>
+    <details><summary class="muted">Speeds</summary><div id="ps-speed" class="grid" style="margin-top:8px"></div>
+      <div class="hint">Dobot's defaults: walls 4 mm/s, infill about twice that, the first layer at half the infill speed or less. Layers that would print faster than the slowest layer time are slowed down so the plastic can cool.</div></details>
+    <details><summary class="muted">Extrusion, skirt, brim and supports</summary><div id="ps-ext" class="grid" style="margin-top:8px"></div>
+      <label class="f" style="margin-top:6px;max-width:260px">Seam (where each wall starts)<select id="ps-seam"><option value="nearest">Nearest — shortest travel</option><option value="rear">At the back — one neat line</option></select></label></details>
+    <details><summary class="muted">Plate and G-code</summary><div id="ps-plate" class="grid" style="margin-top:8px"></div>
+      <div class="hint">Dobot's Cura profile: circular plate Ø80 mm with its centre at X0 Y0, 150 mm high. Where the plate centre sits on the table is fixed by the firmware; Dobot's guide allows up to Ø160 in Repetier Host, but the arm may not reach every point that far out.</div>
+      <label class="f" style="margin-top:6px">Start G-code<textarea id="ps-startCode" rows="5" spellcheck="false"></textarea></label>
+      <label class="f" style="margin-top:6px">End G-code<textarea id="ps-endCode" rows="5" spellcheck="false"></textarea></label>
+      <div class="hint">{temp} becomes the nozzle temperature and {travelF} the travel speed in mm/min.</div></details>
+    <div class="row">
+      <button id="btnPrSlice" class="primary" disabled>Slice</button>
+      <button id="btnPrSaveSet">Save settings</button>
+      <button id="btnPrDefaults" class="ghost">Dobot defaults</button>
+    </div>
+    <div class="bar"><div id="pr-sliceBar"></div></div>
+    <div id="pr-stats" class="stats"></div>
+    <div id="pr-warn"></div>
+    <details id="pr-credits" style="margin-top:8px"><summary class="muted">Credits and licences</summary><div id="pr-credit-body" class="tx-credit-body"></div></details>
+  </div>
+
+  <div class="card">
+    <h3>Print</h3>
+    <div class="row">
+      <button id="btnPrGcode" disabled>Download G-code</button>
+      <button id="btnPrStart" class="primary" disabled>Start print…</button>
+      <button id="btnPrPause" disabled>Pause</button>
+      <button id="btnPrStop" disabled>Stop print</button>
+    </div>
+    <div class="bar"><div id="pr-bar"></div></div>
+    <div id="pr-progress" class="stats">Slice a model, connect the printer, then start.</div>
+    <div class="hint">The page sends the print line by line while it runs, so keep this tab open and the computer awake. You can also download the G-code and print it from Repetier Host or Cura. <b>Pause</b> lifts the nozzle and backs the filament off; <b>Stop print</b> turns the heater off and lifts the nozzle; the red <b>STOP</b> at the top halts the printer at once (reconnect afterwards). The nozzle reaches 200 °C or more — don't touch it, and stay with the printer.</div>
+  </div>
+</section>
+
 <!-- ============ SETUP ============ -->
 <section id="tab-setup" class="tab">
   <div class="card">
@@ -712,6 +843,14 @@ pre.tx-lic{white-space:pre-wrap;font:11px/1.4 ui-monospace,Menlo,monospace;backg
   </div>
 </section>
 
+<div id="prCheck" class="modal" hidden><div class="modal-box">
+  <h3 style="margin-top:0">Ready to print?</h3>
+  <div id="prCheckSum" class="stats"></div>
+  <label class="small-label pr-check"><input type="checkbox"> The nozzle height is saved on the tape (Z zero), and the tape is on the plate.</label>
+  <label class="small-label pr-check"><input type="checkbox"> Filament is loaded: it comes out of the nozzle when fed.</label>
+  <label class="small-label pr-check"><input type="checkbox"> Nothing is in the arm's way, and I will stay with the printer while it prints.</label>
+  <div class="row" style="justify-content:flex-end;margin-top:12px"><button id="btnPrCheckNo" class="ghost">Cancel</button><button id="btnPrCheckGo" class="primary" disabled>Heat and print</button></div>
+</div></div>
 <div id="autocal" class="modal" hidden><div class="modal-box"><div id="autocalBody"></div></div></div>
 <div id="wizard" class="modal" hidden><div class="modal-box"><div id="wizBody"></div></div></div>
 <div id="log"></div>

@@ -1,6 +1,7 @@
 /* ===================== SELF-TEST (Setup → "Test camera features", or ?selftest=1) ===================== */
 // Loads every vision model, runs the camera pipeline for 3 s, checks the beat tracker on a
-// generated 120 BPM click track, the picture tracer, the geometry model, drawing placement, the drawing library, shading, text and several objects. Uses the simulator, so the arm never moves.
+// generated 120 BPM click track, the picture tracer, the geometry model, drawing placement, the drawing library, shading, text, several objects
+// and 3D printing (slice, then print on the simulated printer). Uses the simulators, so nothing moves or heats.
 async function runSelfTest() {
   const out = {
     secure: window.isSecureContext, serial: 'serial' in navigator,
@@ -91,6 +92,19 @@ async function runSelfTest() {
     const fs = freeSpot(oB, oA.place.size * 0.5, [oA]);
     out.objects = fs && fs.ov === 0 && probeFits(objProbe(oB, 0, false), fs.cx, fs.cy, oA.place.size * 0.5, drawZone(), plotPad()) ? 'ok' : 'FAILED';
     if (out.objects !== 'ok') out.errors.push('Objects check failed');
+    // 3D printing: slice a small cube and print it on the simulated printer; it must receive exactly the G-code
+    try {
+      const pr = slicePrintSync(meshPlace(sampleMesh('cube'), { s: 0.3 }), { skirtMin: 20 }, { name: 'self-test cube' });
+      const want = gcodeCommands(pr.gcode).cmds, sim = new SimPrinter({ speed: 5000, faultEvery: 23 }), link = new GcodeLink(sim);
+      await link.connect();
+      const J = link.start(pr.gcode);
+      for (let k = 0; k < 600 && !J.done; k++) await sleep(25);
+      const tr = sim.trace.filter(c => c !== 'M105' && !/^M110/.test(c));
+      const same = J.done && !J.error && tr.length === want.length && tr.every((c, i) => c === want[i]);
+      await link.close();
+      out.print3d = same && pr.stats.layers === 29 && sim.coldBlocked === 0 ? `ok (${pr.stats.layers} layers, ${want.length} lines sent, ${link.resends} resent)` : 'FAILED';
+    } catch (e) { out.print3d = 'FAILED: ' + e.message; }
+    if (!out.print3d.startsWith('ok')) out.errors.push('3D printing check failed');
     if (out.smooth !== 'ok') out.errors.push('Smooth motion check failed');
     if (out.tracer !== 'ok') out.errors.push('Picture tracer: ' + out.tracer);
     if (!L) out.errors.push('Geometry model check failed');
@@ -103,7 +117,7 @@ async function runSelfTest() {
   }
   out.ok = !out.errors.length && out.frames > 0 && Math.abs(out.beatBpm - 120) < 2;
   const summary = `${out.ok ? 'All good' : 'Problems found'} — face: ${out.models.face}; hands: ${out.models.gesture}; body: ${out.models.pose}; ` +
-    `camera ${out.fps} fps; beat tracker ${out.beatBpm} BPM (expected 120); picture tracer ${out.tracer}; geometry ${out.geometry}; placement ${out.placement}; smooth motion ${out.smooth}; library ${out.library}; shading ${out.shading}; text ${out.text}; objects ${out.objects}; ` +
+    `camera ${out.fps} fps; beat tracker ${out.beatBpm} BPM (expected 120); picture tracer ${out.tracer}; geometry ${out.geometry}; placement ${out.placement}; smooth motion ${out.smooth}; library ${out.library}; shading ${out.shading}; text ${out.text}; objects ${out.objects}; 3D printing ${out.print3d}; ` +
     `USB serial ${out.serial ? 'available' : 'NOT available'}.`;
   if (res) res.textContent = summary;
   log('Self-test: ' + summary, out.ok ? 'ok' : 'err');
