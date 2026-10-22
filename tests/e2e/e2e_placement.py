@@ -1,6 +1,6 @@
-"""Browser test: free placement (size, any rotation, mirror, drag in the green zone, handles, keyboard),
-pen-up travel around the base, live pen laser dot and red drawn lines. Runs the real app against the
-built-in kinematic simulator in headless Chromium.
+"""Browser test: free placement (size, any rotation, mirror, drag in the green zone, handles,
+keyboard), travel routing around the base, live pen laser dot and red drawn lines.
+Runs the real app against the built-in kinematic simulator in headless Chromium.
 Needs Python 3 and Playwright (pip install playwright; playwright install chromium).
 Run from anywhere: python3 tests/e2e/e2e_placement.py"""
 import asyncio, json, math, pathlib, re, shutil, subprocess, sys, tempfile, time
@@ -124,6 +124,7 @@ async def main():
             # ---------- drag to move ----------
             await pg.fill('#pl-sizeNum', '70'); await pg.press('#pl-sizeNum', 'Enter')
             await pg.click('#btnPlCentre'); await asyncio.sleep(0.3)
+            await pg.locator('#plotCanvas').scroll_into_view_if_needed(); await asyncio.sleep(0.3)   # the map must be on screen to drag on it
             g = await ev(CENTRE); before = await ev('S.plot.place')
             await drag(pg, g['c'], (g['c'][0] + 90, g['c'][1]))
             after = await ev('S.plot.place'); ins = await ev(INSIDE)
@@ -199,12 +200,12 @@ async def main():
             check('the pen shows as a red laser dot', laser >= 12, f'{laser} red pixels at the pen')
             seg = await ev("""(() => { const j = S.paper.jobs[S.paper.jobs.length - 1]; let best = null;
                 for (let i = 1; i < j.k; i++) { const a = j.cmds[i - 1], b = j.cmds[i];
-                  if (Math.abs(a.z - j.zD) < 0.5 && Math.abs(b.z - j.zD) < 0.5 && Math.hypot(b.x - a.x, b.y - a.y) > 3 && Math.hypot((a.x + b.x) / 2 - S.pos.x, (a.y + b.y) / 2 - S.pos.y) > 12) best = [(a.x + b.x) / 2, (a.y + b.y) / 2]; }
+                  if (Math.abs(a.z - j.zD) < 0.5 && Math.abs(b.z - j.zD) < 0.5 && Math.hypot(b.x - a.x, b.y - a.y) > 1.5 && Math.hypot((a.x + b.x) / 2 - S.pos.x, (a.y + b.y) / 2 - S.pos.y) > 12) best = [(a.x + b.x) / 2, (a.y + b.y) / 2]; }
                 return best; })()""")
             red_done = await ev(RED_AT, [seg[0], seg[1], 2]) if seg else 0
             todo = await ev("""(() => { const j = S.paper.jobs[S.paper.jobs.length - 1];
                 for (let i = j.cmds.length - 1; i > j.k + 3; i--) { const a = j.cmds[i - 1], b = j.cmds[i];
-                  if (Math.abs(a.z - j.zD) < 0.5 && Math.abs(b.z - j.zD) < 0.5 && Math.hypot(b.x - a.x, b.y - a.y) > 3) return [(a.x + b.x) / 2, (a.y + b.y) / 2]; }
+                  if (Math.abs(a.z - j.zD) < 0.5 && Math.abs(b.z - j.zD) < 0.5 && Math.hypot(b.x - a.x, b.y - a.y) > 1.5) return [(a.x + b.x) / 2, (a.y + b.y) / 2]; }
                 return null; })()""")
             red_todo = await ev(RED_AT, [todo[0], todo[1], 1]) if todo else -1
             check('drawn lines are red; lines still to draw are not', red_done >= 3 and red_todo == 0, f'{red_done} red px on a drawn line, {red_todo} on a line still to draw')

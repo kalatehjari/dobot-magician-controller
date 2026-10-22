@@ -1,5 +1,5 @@
-"""Browser test: auto-calibration, picture tracing, smooth (CP) drawing, pause, reach checks, settings
-migration. Runs the real app against the built-in kinematic simulator in headless Chromium.
+"""Browser test: auto-calibration, picture tracing, smooth (CP) drawing, pause, reach checks,
+settings migration. Runs the real app against the built-in kinematic simulator in headless Chromium.
 Needs Python 3 and Playwright (pip install playwright; playwright install chromium).
 Run from anywhere: python3 tests/e2e/e2e_drawing.py"""
 import asyncio, json, pathlib, shutil, subprocess, sys, tempfile, time
@@ -118,10 +118,11 @@ async def main():
             check('precise mode draws with straight moves only', await ev('S.dev.io.st.cpCount') == cp2 and await ev('S.dev.io.st.ptpCount') > ptp2)
             await pg.select_option('#plot-motion', 'smooth')
 
-            # ---------- placement controls ----------
-            r0 = await ev('S.plot.rect')
+            # ---------- placement (v4 controls) ----------
+            RECT = "(() => { const b = frameBox(S.plot.sketch, S.plot.place); return { w: b.x1 - b.x0, h: b.y1 - b.y0 }; })()"   # the selected drawing
+            r0 = await ev(RECT)
             await pg.click('#btnRot90'); await asyncio.sleep(0.6)
-            r1 = await ev('S.plot.rect')
+            r1 = await ev(RECT)
             check('rotating 90° turns the drawing area around', abs((r0['h'] / r0['w']) - (r1['w'] / r1['h'])) < 0.05, f"{r0['h']:.0f}×{r0['w']:.0f} → {r1['h']:.0f}×{r1['w']:.0f} mm")
             await pg.fill('#pl-rotNum', '0'); await pg.press('#pl-rotNum', 'Enter'); await asyncio.sleep(0.4)
             moved = await ev("(() => { applyWant({ ...S.plot.place, cx: 130, cy: 0 }); buildPlot(); return S.plot.place; })()")
