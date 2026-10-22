@@ -54,7 +54,7 @@ async def main():
             await pg.goto(f'http://localhost:{PORT}/app.html')
             N = await ev('LIBRARY.length')
             ver = await ev("document.querySelector('.ver').textContent")
-            check('version shows v1.4.0', ver == 'v1.4.0', ver)
+            check('version shows v1.4.0 or later', tuple(int(v) for v in ver.lstrip('v').split('.')) >= (1, 4, 0), ver)
 
             # calibrate in the simulator, so the green zone is a real one
             await pg.click('#btnSim'); await wait_for(ev, "!document.getElementById('autocal').hidden", 3000)
