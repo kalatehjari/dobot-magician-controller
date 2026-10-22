@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.5.0 — 2026-10-23
+
+### 3D printing (new tab)
+- For Dobot's 3D-printing kit with Dobot's 3D-printer firmware. The printer has its own connection in the tab (the arm and the printer use different firmware), and a printer simulator.
+- Models: STL (binary — also with a "solid" header — or ASCII) and OBJ files, or seven built-in models (calibration cube, round vase, twisted vase, gear, pyramid, arch bridge, ball). Units (mm, cm, inches, metres); size, volume and whether the surface is closed. Models larger than the plate are scaled to fit.
+- Placement: scale, turn on the plate, tip a quarter turn over X or Y, lay flat on the largest outside face, mirror, move, fit to the plate (leaving room for the skirt), reset; download the placed model as STL.
+- Slicer: layers cut through their middles with exact edge linking; walls (innermost first), solid top and bottom wherever the part is open above or below, lines or grid infill on a fixed grid with zig-zag links, supports only from the plate or everywhere (overhangs past an angle, one empty layer above and below, a gap to the sides), skirt with a minimum length, brim, retraction only when the nozzle leaves the part, optional lift, seam nearest or at the back, slower layers so small parts can cool, vase mode (one spiral wall over a solid bottom), overlapping bodies merged. Presets: Normal (Dobot default), Fine, Draft, Strong, Vase.
+- Dobot's defaults: 0.4 mm nozzle, 1.75 mm filament at 200 °C with the fan on, 0.2 mm layers with a 0.35 mm first layer, walls at 4 mm/s, infill at 8 mm/s, the first layer at 4 mm/s, 6 mm retraction at 60 mm/s, a Ø80 mm plate centred at X0 Y0 and 150 mm of height; Dobot's start (fan on) and end G-code (heater off, back off, lift, move away, fan off), editable.
+- Preview in WebGL: the model on the plate (red when it does not fit), then every printed line by kind, in 3D or one layer at a time, with travel moves if wanted.
+- Printing from the page: heat, heater off, feed and retract filament (only when hot), fan, save the nozzle height (M415); a start checklist; G-code sent with line numbers and checksums, one line per "ok" or ahead into the 63-byte buffer; damaged lines resent; a silent printer asked again; renumbering after a restart; live progress (layer, time so far and left) with the preview following the print; pause (filament backed off, nozzle lifted 5 mm) and resume; stop (heater off, nozzle lifted); the red STOP halts the printer (M112 and a reset). The screen is kept awake while printing.
+- Download the G-code to print from Repetier Host or Cura.
+- Self-test: slices a cube and prints it on the printer simulator with damaged lines.
+
+### Other
+- The build stops when two source files declare the same top-level name (it happened once in development: a second `convexHull` replaced the plotter's).
+- Third-party code: Clipper 6.4.2 (Boost Software License 1.0) with JSBN; licences in the source and in the app.
+
 ## 1.4.0 — 2026-10-23
 
 ### Several objects on one sheet

@@ -1,6 +1,6 @@
 # Dobot Magician Controller
 
-Control a **Dobot Magician** robot arm straight from your browser over USB — no Dobot software needed. Open one HTML file in Chrome or Edge, plug the arm in, and draw, write, move, record, dance and react.
+Control a **Dobot Magician** robot arm straight from your browser over USB — no Dobot software needed. Open one HTML file in Chrome or Edge, plug the arm in, and draw, write, 3D print, move, record, dance and react.
 
 ![Placing a traced picture inside the arm's drawing zone](docs/placement.png)
 
@@ -17,6 +17,11 @@ Control a **Dobot Magician** robot arm straight from your browser over USB — n
   - **Hover round:** before drawing, the pen goes once round the outside of everything (a box or the outline) just above the paper, so you can check the paper is in the right place.
   - **Quiet, smooth motion:** the whole drawing runs as one continuous path with low, rounded pen hops instead of stopping at every lift. Choose Quiet & smooth, Balanced or Fast; a quiet-speed finder listens with the microphone and picks the quietest speeds. A precise stop-at-every-point mode, pause and resume, and a 20 mm test square are there too.
   - **Live view:** the pen shows as a red laser dot, and finished lines turn red as the arm draws them.
+- **3D printing** (with Dobot's 3D-printing kit and 3D-printer firmware)
+  - Load **STL** (binary or ASCII) or **OBJ** files, or one of seven built-in models. Choose the file's units; scale, turn, tip over, lay flat on the largest face, mirror, move, or fit to the plate. A model that does not fit the plate is shown in red.
+  - **Built-in slicer:** walls, solid top and bottom, lines or grid infill, supports (only from the plate, or everywhere), skirt and brim, retraction only when the nozzle leaves the part, vase mode (one spiral wall), and slower layers for small parts. Overlapping bodies in one file merge. Defaults follow Dobot's guide: 0.2 mm layers with a 0.35 mm first layer, 200 °C with the fan on, walls at 4 mm/s and infill at 8 mm/s, 6 mm retraction at 60 mm/s, a Ø80 mm plate centred at X0 Y0 and up to 150 mm high. Every setting, and the start and end G-code, can be changed.
+  - **Preview** of the model on the plate and of every line the nozzle will lay down, coloured by kind, in 3D or one layer at a time.
+  - **Print** straight from the page over USB — heat, feed filament, save the nozzle height (M415), fan — with line numbers, checksums and automatic resend, live progress, pause (the nozzle lifts and backs the filament off) and stop. Or download the G-code for Repetier Host or Cura. A printer simulator lets you try it all without hardware.
 - **Mouse control** — click or drag on a map of the reach to move the arm; keyboard nudges; pen up/down, suction cup and gripper.
 - **Record & learn** — record movements, average several takes into one smooth learned movement, and replay it.
 - **Dance** — finds the beat in a song file, from the microphone or a metronome, and dances to it.
@@ -33,6 +38,8 @@ Control a **Dobot Magician** robot arm straight from your browser over USB — n
 | ![The drawing library showing flags in colour](docs/drawing-library.png) | ![Two library drawings and a line of text on one sheet](docs/objects-and-text.png) |
 | **Text tool** | **Shading** |
 | ![Thirteen single-line fonts](docs/text-tool.png) | ![Shading settings: pattern, angle, spacing, angle per shape](docs/shading.png) |
+| **3D print preview** | **Printing (simulator)** |
+| ![A sliced gear: walls, top layers and skirt on the round plate](docs/3d-print-preview.png) | ![A spiral vase half printed: sent part in colour, the rest faded](docs/3d-printing.png) |
 
 ## Quick start
 
@@ -43,6 +50,16 @@ Control a **Dobot Magician** robot arm straight from your browser over USB — n
 5. Open **Plotter**, pick a drawing from the library, drop in an SVG or a picture, or type some text. Place it in the green zone, press **Hover round** to check the paper, and click **Draw**.
 
 No arm at hand? Click **Simulator** instead of Connect USB.
+
+### 3D printing
+
+1. Fit the 3D-printing kit as in Dobot's guide: hot end on the forearm, heater cable on interface 4, fan on 5, temperature sensor on 6, extruder motor on Stepper1; filament through the extruder and the PTFE tube down to the hot end.
+2. Put Dobot's 3D-printer firmware on the arm: in DobotStudio choose **Tools → Open 3D Printing** and confirm. Then close DobotStudio and Repetier Host, so the page can use the USB port.
+3. Open the **3D print** tab and click **Connect 3D printer (USB)**. Press **Heat**, wait for 200 °C, and **Feed 10 mm** until plastic comes out.
+4. Stick masking tape on the plate. Hold the forearm's unlock button and lower the nozzle until it just touches the tape, then press the **Key** button on the base (or **Save nozzle height** in the page). The arm beeps.
+5. Load a model, place it, press **Slice**, check the preview, and press **Start print…**.
+
+To use the other tabs again, the arm needs DobotStudio's normal firmware: DobotStudio offers to switch back when you next connect with it. No printer? **Printer simulator** runs everything without hardware.
 
 If the arm does not appear in the port list, check the cable and that the arm is switched on; some computers also need a driver for the arm's USB-serial chip.
 
@@ -56,6 +73,7 @@ If the arm does not appear in the port list, check the cable and that the arm is
 - Keep hands and objects clear of the arm. In the Dance, Imitate and Face tabs the arm moves by itself.
 - **STOP** (or Esc) halts motion and clears the arm's command queue. If the arm's red light comes on, use the red bar to clear the alarm.
 - The software limits help but are not a substitute for watching the arm.
+- When 3D printing, the nozzle reaches 200 °C or more: don't touch it, and stay with the printer. **Stop print** turns the heater off and lifts the nozzle; the red **STOP** halts the printer at once (M112 and a reset).
 
 ## How it works
 
@@ -66,6 +84,7 @@ If the arm does not appear in the port list, check the cable and that the arm is
 - **Smooth motion:** strokes are cut into short continuous-path moves and short gaps become rounded hops, so the arm's controller can look ahead instead of stopping; speed and acceleration are capped for every command.
 - **Drawing library:** each drawing is stored on a 0–1000 grid as base-64 delta runs (about 3 MB for all 2 245). Sources: [Openclipart](https://openclipart.org) (public domain), [Tabler Icons](https://tabler.io/icons) (MIT), [d3-celestial](https://github.com/ofrohn/d3-celestial) star data (BSD 3-Clause), [flag-icons](https://github.com/lipis/flag-icons) (MIT), Hershey lettering, and drawings made by program for this project (`tools/library`). The app shows the credits and licence texts (Plotter → Drawing library → Credits and licences).
 - **Text:** single-line Hershey and EMS fonts, encoded compactly (`tools/fonts`).
+- **3D printing:** the model is cut through the middle of every layer; each mesh edge that crosses the cut gives one point, so neighbouring triangles link into closed outlines exactly. Walls, skins and supports are offsets and boolean operations on those outlines with [Clipper](http://www.angusj.com) (integer micrometres); infill is scan lines on a fixed grid, joined into zig-zags where the link stays inside the part. Solid layers go wherever the part is open above or below within the top and bottom layer counts. The G-code is Marlin-style (absolute positions, extrusion reset each layer) for Dobot's 3D-printer firmware, centred on X0 Y0 as in Dobot's Cura profile. The page sends it over Web Serial at 115 200 baud with line numbers and checksums, one line per `ok` by default (or ahead into the 63-byte buffer, as Repetier Host does), resending damaged lines and renumbering after a printer restart.
 - **One file:** the app is a single self-contained HTML page built from the files in `src/`.
 
 ## Project layout
@@ -94,15 +113,16 @@ python3 tests/e2e/e2e_smooth.py      # motion profiles, continuous drawing, glid
 python3 tests/e2e/e2e_shade.py       # shading
 python3 tests/e2e/e2e_objects.py     # several objects, text tool, layouts
 python3 tests/e2e/e2e_library.py     # drawing library: every drawing loads and fits
+python3 tests/e2e/e2e_print.py       # 3D printing: files, placement, slicing, printing on the simulator
 ```
 
 `e2e_library.py` also compares the library folder with the app when the folder from the release is unpacked as `plotter-library/` at the repository root (or `MAGICIAN_LIBRARY` points at it).
 
-The app also has a built-in self-test: **Setup → Test camera features**, or open the file with `?selftest=1`. It loads the vision models, checks the camera, the beat tracker, the picture tracer, the geometry model, placement, smooth motion, the drawing library, shading, text and several objects, all with the simulator so the arm does not move.
+The app also has a built-in self-test: **Setup → Test camera features**, or open the file with `?selftest=1`. It loads the vision models, checks the camera, the beat tracker, the picture tracer, the geometry model, placement, smooth motion, the drawing library, shading, text, several objects and 3D printing (a model sliced and printed on the printer simulator), all with the simulators so nothing moves or heats.
 
 ## Status
 
-Version 1.4.0 (see the [changelog](CHANGELOG.md)). The app is tested with the built-in kinematic simulator (unit and browser tests) and with the self-test in Chrome on macOS. Testing on a physical arm is limited so far; auto-calibration checks the arm's joint conventions live and stops if they do not match. If something does not work with your arm, please open an issue.
+Version 1.5.0 (see the [changelog](CHANGELOG.md)). The app is tested with the built-in kinematic simulator and printer simulator (unit and browser tests) and with the self-test in Chrome on macOS. Testing on a physical arm is limited so far; auto-calibration checks the arm's joint conventions live and stops if they do not match. 3D printing follows the settings in Dobot's guide and has not yet been tried on a physical 3D-printing kit, so watch the first prints closely. If something does not work with your arm, please open an issue.
 
 ## Acknowledgements
 
@@ -110,9 +130,10 @@ Version 1.4.0 (see the [changelog](CHANGELOG.md)). The app is tested with the bu
 - Vision uses [Google MediaPipe](https://github.com/google-ai-edge/mediapipe) Tasks Vision (Apache-2.0), loaded at runtime.
 - Drawing library: the Openclipart artists (credited in the app and in the library's `CREDITS.md`), Tabler Icons by Paweł Kuna, d3-celestial by Olaf Frohn, and the flag-icons contributors.
 - Fonts: the Hershey fonts by Dr. A. V. Hershey (U.S. National Bureau of Standards), the EMS fonts by Sheldon B. Michaels (SIL Open Font License 1.1), and their SVG versions by Windell H. Oskay (Evil Mad Scientist, `hersheytext`).
+- 3D printing: [Clipper](http://www.angusj.com) by Angus Johnson (polygon clipping and offsetting) in Timo's JavaScript translation, which uses Tom Wu's JSBN; print defaults from Dobot's Magician user guide and Dobot's printing tips.
 
 ## Licence
 
-[MIT](LICENSE).
+[MIT](LICENSE), except `src/part48_clipper.js`: Clipper 6.4.2 (Boost Software License 1.0) with JSBN (Tom Wu's licence). Both licence texts are in that file and in the app (3D print → Print settings → Credits and licences).
 
 This project is not affiliated with or endorsed by Dobot. "Dobot" and "Magician" are trademarks of their respective owner.

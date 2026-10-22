@@ -40,7 +40,22 @@ ORDER = [
     'part43_shade_ui.js',
     'part46_objects_ui.js',
     'part47_text_ui.js',
+    'part48_clipper.js',
+    'part49_slicer.js',
+    'part50_printer.js',
+    'part51_print_view.js',
+    'part52_print_ui.js',
 ]
+
+# every part shares one global scope: a name declared at the top level of two parts silently replaces the first
+tops = collections.defaultdict(list)
+for name in ORDER:
+    for m in re.finditer(r'^(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)|^(?:const|let|var|class)\s+([A-Za-z_$][\w$]*)',
+                         (SRC / name).read_text(encoding='utf-8'), re.M):
+        tops[m.group(1) or m.group(2)].append(name)
+clash = {k: v for k, v in tops.items() if len(v) > 1}
+if clash:
+    raise SystemExit(f'names declared in more than one part: {clash}')
 
 js = '\n'.join((SRC / name).read_text(encoding='utf-8') for name in ORDER)
 shell = (SRC / 'part7_shell.html').read_text(encoding='utf-8')
@@ -53,7 +68,9 @@ out.write_text(html, encoding='utf-8', newline='\n')
 ids = re.findall(r'id="([^"]+)"', html)
 dups = [k for k, v in collections.Counter(ids).items() if v > 1]
 refs = set(re.findall(r"(?:getElementById|\$id|\$pl)\('([^']+)'\)", js))
-missing = sorted(r for r in refs if r not in set(ids))
+# ps-… inputs of the print settings are made by p3BuildForm (part 52), so they are not in the shell
+made = re.compile(r'ps-(?!(?:support|pattern|seam|vase|fan|startCode|endCode|main|speed|ext|plate)$)\w+')
+missing = sorted(r for r in refs if r not in set(ids) and not made.fullmatch(r))
 print(f'built {out.name}: {len(html.encode())} bytes; duplicate ids: {dups or "none"}; missing ids: {missing or "none"}')
 if dups or missing:
     raise SystemExit(1)
