@@ -217,6 +217,7 @@ class Dobot {
   // Speed for both motion types. Command 83 takes percentage ratios (kept at 100 %); 81 sets
   // straight-line (MOVL) speed in mm/s and mm/s²; 80 sets joint (MOVJ) speed in °/s and °/s².
   async setSpeed(v, a) {
+    if (typeof motionCaps === 'function') ({ v, a } = motionCaps(v, a));     // Smooth & quiet motion profile
     const vel = Math.min(320, Math.max(5, v)), acc = Math.min(400, Math.max(5, a));
     const jv = Math.min(320, Math.max(20, vel * 0.6)), ja = Math.min(320, Math.max(20, acc * 0.6));
     await this.call(CMD.PTP_COMMON, 3, f32bytes([100, 100]));

@@ -20,11 +20,19 @@ function streamTo(owner, p, opts = {}) {
   if (S.live) { S.live = false; setLiveButton(); }
   M.owner = owner; M.target = { x: p.x, y: p.y, z: p.z }; M.opts = opts;
 }
-function streamRelease(owner) { if (M.owner === owner) { M.owner = null; M.target = null; } }
+function streamRelease(owner) {
+  if (M.owner === owner) { M.owner = null; M.target = null; }
+  if (typeof glideRelease === 'function') glideRelease(owner);
+}
 
 setInterval(async () => {
   if (M.sending || M.seqBusy || !M.target || !smartCanMove()) return;
   let t = clampTarget(M.target.x, M.target.y, M.target.z);
+  if (typeof followGlide === 'function' && followGlide()) {        // smoothed, continuous following
+    const db = M.opts.deadband ?? M.deadband;
+    if (!GL.target || GL.owner !== M.owner || Math.hypot(t.x - GL.target.x, t.y - GL.target.y, t.z - GL.target.z) >= db) glideSet(M.owner, t);
+    return;
+  }
   const from = S.cmd || S.pos;
   const d = Math.hypot(t.x - from.x, t.y - from.y, t.z - from.z);
   if (d < (M.opts.deadband ?? M.deadband)) return;

@@ -9,6 +9,8 @@ async function runJob(name, cmds, progressEl, opts = {}) {
   log(`${name}: ${cmds.length} moves…`);
   S.paused = false; renderPause();
   if (typeof syncPlaceInputs === 'function') syncPlaceInputs();
+  if (typeof renderObjectList === 'function') renderObjectList();
+  if (typeof syncTextUI === 'function') syncTextUI();
   try {
     await S.dev.setSpeed(opts.speed ?? S.speed.draw, S.speed.accel);
     if (opts.before) await opts.before();
@@ -24,6 +26,8 @@ async function runJob(name, cmds, progressEl, opts = {}) {
     await S.dev.setSpeed(S.speed.live, S.speed.accel).catch(() => {});
     S.running = false; S.paused = false; renderPause();
     if (typeof syncPlaceInputs === 'function') syncPlaceInputs();
+    if (typeof renderObjectList === 'function') renderObjectList();
+    if (typeof syncTextUI === 'function') syncTextUI();
     if (progressEl) setTimeout(() => progressEl.style.width = '0%', 800);
   }
 }
@@ -35,6 +39,7 @@ function showTab(name) {
   }
   if (name === 'imit' || name === 'react') placeCamera(name);
   if (name === 'imit') updateImitUI();
+  if (name === 'plot' && typeof libEnsureGrid === 'function') libEnsureGrid();
   drawAll();
 }
 
@@ -79,36 +84,73 @@ function plotRect() {
   return { cx: (r.x0 + r.x1) / 2, cy: 0, w: r.x1 - r.x0, h: 2 * r.h, label: 'largest rectangle' };
 }
 
-/* ----- placement state: S.plot.sketch (normalised drawing) + S.plot.place {cx, cy, size, angle, mirror} ----- */
-const PL = { probe: null, probeKey: '', targets: null, targetsKey: '', base: null, drag: null, zt: 0, kt: 0 };
+/* ----- objects on the paper -----
+   S.plot.objects: every drawing and text placed on the paper, in the order they were added (a later
+   one is on top when clicking). Each has its own normalised drawing (sketch), placement {cx, cy, size,
+   angle, mirror}, shading settings and a "use" flag (drawn when Draw is pressed). S.plot.sel is the
+   selected one's id: the placement, text and shading controls act on it. S.plot.sketch, .place,
+   .placeOk and .label are the selected object's. */
+let OBJ_SEQ = 0;
+const PL = { drag: null, base: null, hover: null, lastHit: null, zt: 0, kt: 0, order: new Map(), frame: null };
 
-function plProbe() {
-  const sk = S.plot.sketch, pl = S.plot.place, key = `${sk.id}|${pl.angle}|${pl.mirror ? 1 : 0}`;
-  if (PL.probeKey !== key) { PL.probe = placementProbe(sk, pl.angle, pl.mirror); PL.probeKey = key; }
-  return PL.probe;
+function selObj() { const id = S.plot.sel; return id == null ? null : S.plot.objects.find(o => o.id === id) || null; }
+function objById(id) { return S.plot.objects.find(o => o.id === id) || null; }
+for (const k of ['sketch', 'place', 'placeOk', 'label']) {
+  Object.defineProperty(S.plot, k, {
+    get() { const o = selObj(); return o ? o[k] : (k === 'placeOk' ? true : null); },
+    set(v) { const o = selObj(); if (o) o[k] = v; },
+    enumerable: true, configurable: true,
+  });
 }
-// Roomiest spots for the current rotation: [on the centre line, anywhere]. Cached.
-function placeTargets() {
-  const z = drawZone(), pad = plotPad(), P = plProbe(), key = `${PL.probeKey}|${zoneKey(z)}|${pad}`;
-  if (PL.targetsKey !== key) {
-    PL.targets = [bestPlacement(P, z, { centreLine: true, pad }), bestPlacement(P, z, { pad })];
-    PL.targetsKey = key;
+Object.defineProperty(S.plot, 'order', { get() { const o = selObj(); return o ? o.orderRef : null; }, enumerable: true, configurable: true });
+
+function newObject(kind, sk, label, extra = {}) {
+  const o = { id: ++OBJ_SEQ, kind, label: label || (kind === 'text' ? 'Text' : 'Drawing'), source: null, sketch: sk, place: null, placeOk: true,
+              use: true, probe: null, probeKey: '', targets: null, targetsKey: '', orderRef: null, ...extra };
+  if (typeof shadeInit === 'function') shadeInit(o);
+  return o;
+}
+function resetObjCaches(o) {
+  o.probe = null; o.probeKey = ''; o.targets = null; o.targetsKey = ''; o.orderRef = null;
+  if (typeof shadeInit === 'function') { o.shT = null; o.shTkey = ''; o.shCache = null; o.shOv = new Map(); o.shOvVer = (o.shOvVer || 0) + 1; }
+}
+
+// The object turned for a rotation (size 1, centre 0) for the fit checks; cached per object.
+function objProbe(o, angle = o.place.angle, mirror = o.place.mirror) {
+  const key = `${o.sketch.id}|${angle}|${mirror ? 1 : 0}`;
+  if (o.probeKey !== key) { o.probe = placementProbe(o.sketch, angle, mirror); o.probeKey = key; }
+  return o.probe;
+}
+// Roomiest spots for the object at a rotation: [on the centre line, anywhere]. Cached.
+function objTargets(o, angle = o.place.angle, mirror = o.place.mirror) {
+  const z = drawZone(), pad = plotPad(), P = objProbe(o, angle, mirror), key = `${o.probeKey}|${zoneKey(z)}|${pad}`;
+  if (o.targetsKey !== key) {
+    o.targets = [bestPlacement(P, z, { centreLine: true, pad }), bestPlacement(P, z, { pad })];
+    o.targetsKey = key;
   }
-  return PL.targets;
+  return o.targets;
 }
+function plProbe() { const o = selObj(); return o ? objProbe(o) : null; }
+function placeTargets() { const o = selObj(); return o ? objTargets(o) : [null, null]; }
+
 // Placement asked for → the nearest one that fits (moved or, only if needed, shrunk).
-function fitPlace(want) {
-  const prev = S.plot.place;
-  S.plot.place = { ...want, mirror: !!want.mirror };          // so the probe and targets are for this rotation
-  try { return fixPlacement(S.plot.sketch, S.plot.place, drawZone(), { pad: plotPad(), probe: plProbe(), targets: placeTargets() }); }
-  finally { S.plot.place = prev; }
+function fitPlaceFor(o, want) {
+  const w = { cx: want.cx, cy: want.cy, size: want.size, angle: want.angle, mirror: !!want.mirror };
+  return fixPlacement(o.sketch, w, drawZone(), { pad: plotPad(), probe: objProbe(o, w.angle, w.mirror), targets: objTargets(o, w.angle, w.mirror) });
 }
-function setPlace(pl) {
-  S.plot.place = { cx: pl.cx, cy: pl.cy, size: pl.size, angle: pl.angle, mirror: !!pl.mirror };
+function fitPlace(want) { const o = selObj(); return o ? fitPlaceFor(o, want) : null; }
+
+function setPlaceFor(o, pl) {
+  o.place = { cx: pl.cx, cy: pl.cy, size: pl.size, angle: pl.angle, mirror: !!pl.mirror };
   S.plot.placeVer++;
-  S.plot.placeOk = probeFits(plProbe(), pl.cx, pl.cy, pl.size, drawZone(), plotPad());
-  syncPlaceInputs();
+  o.placeOk = probeFits(objProbe(o), pl.cx, pl.cy, pl.size, drawZone(), plotPad());
+  if (o.kind === 'text' && o.text) o.text.height = pl.size / o.sketch.srcBox.L;     // letter height follows the size
+  if (o === selObj()) {
+    syncPlaceInputs();
+    if (o.kind === 'text' && typeof syncTextUI === 'function') syncTextUI();
+  }
 }
+function setPlace(pl) { const o = selObj(); if (o) setPlaceFor(o, pl); }
 
 function defaultPlacement(sk) {
   const z = drawZone(), P = placementProbe(sk, 0, false), pad = plotPad();
@@ -117,24 +159,122 @@ function defaultPlacement(sk) {
   return { cx: b.cx, cy: b.cy, size: Math.max(5, Math.floor(b.size * 0.9)), angle: 0, mirror: false };
 }
 
-// New drawing for the Plotter. opts.source: picture name, so re-tracing the same picture keeps its
-// scale and position on the paper; opts.robotMm: strokes already in robot millimetres (air drawing).
+// Box (robot mm) round an object's frame, grown by `gap` on every side.
+function frameBox(sk, pl, gap = 0) {
+  const fr = placeFrame(sk, pl);
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const p of fr) { if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x; if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y; }
+  return { x0: x0 - gap, y0: y0 - gap, x1: x1 + gap, y1: y1 + gap };
+}
+const boxOverlapArea = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
+
+// A spot in the green zone where the object fits at `size`, clear of the others if possible
+// (3 mm apart), preferring the middle of the zone. {cx, cy, ov} — ov = overlap with the others (mm²).
+function freeSpot(o, size, others, angle = 0, mirror = false) {
+  const z = drawZone(), pad = plotPad(), P = objProbe(o, angle, mirror);
+  if (!(z.rOut > z.rIn) || !(size > 0)) return null;
+  const boxes = others.filter(x => x.place).map(x => frameBox(x.sketch, x.place, 3));
+  const nR = 14, rs = (z.rOut - z.rIn) / nR, mid = (z.rIn + z.rOut) / 2;
+  let best = null;
+  for (let i = 0; i <= nR; i++) {
+    const r = z.rIn + i * rs;
+    for (let th = 0; th <= Math.max(Math.abs(z.thMin), Math.abs(z.thMax)); th += 4) {
+      for (const a of th ? [th, -th] : [0]) {
+        if (a < z.thMin || a > z.thMax) continue;
+        const cx = r * Math.cos(a * RAD), cy = r * Math.sin(a * RAD);
+        if (!probeFits(P, cx, cy, size, z, pad)) continue;
+        const b = frameBox(o.sketch, { cx, cy, size, angle, mirror }, 0);
+        let ov = 0;
+        for (const q of boxes) ov += boxOverlapArea(b, q);
+        const score = ov * 1000 + Math.abs(a) * 0.6 + Math.abs(r - mid) * 0.25;
+        if (!best || score < best.score) best = { cx, cy, ov, score };
+      }
+    }
+  }
+  return best;
+}
+
+// Where a new object goes: the first drawing as big as the zone allows (as before); later ones
+// smaller, in free space beside what is already there; text at its letter height.
+function placeNew(o) {
+  const others = S.plot.objects.filter(x => x !== o && x.place);
+  if (o.kind === 'text') {
+    const angle = o.text && Number.isFinite(o.text.angle) ? o.text.angle : 0, size = o.text.height * o.sketch.srcBox.L;
+    const spot = freeSpot(o, size, others, angle);
+    if (spot) return { cx: spot.cx, cy: spot.cy, size, angle, mirror: false };
+    const t = objTargets(o, angle, false).filter(Boolean)[0], z = drawZone();
+    return t ? { cx: t.cx, cy: t.cy, size, angle, mirror: false } : { cx: (z.rIn + z.rOut) / 2, cy: 0, size, angle, mirror: false };
+  }
+  if (!others.length) return defaultPlacement(o.sketch);
+  const T = objTargets(o, 0, false).filter(Boolean), big = T.length ? Math.max(...T.map(t => t.size)) : 40;
+  for (const f of [0.5, 0.38, 0.28, 0.2]) {
+    const size = Math.max(10, Math.floor(big * f)), spot = freeSpot(o, size, others);
+    if (spot && spot.ov === 0) return { cx: spot.cx, cy: spot.cy, size, angle: 0, mirror: false };
+  }
+  const size = Math.max(10, Math.floor(big * 0.4)), spot = freeSpot(o, size, others);
+  return spot ? { cx: spot.cx, cy: spot.cy, size, angle: 0, mirror: false } : defaultPlacement(o.sketch);
+}
+
+function selectObject(id) {
+  const o = id == null ? null : objById(id);
+  const nid = o ? o.id : null;
+  if (S.plot.sel === nid) return;
+  S.plot.sel = nid;
+  onSelectionChange();
+}
+// Everything that shows the selected object follows the selection.
+function onSelectionChange() {
+  syncPlaceInputs();
+  if (typeof syncShadeUI === 'function') syncShadeUI();
+  if (typeof syncTextUI === 'function') syncTextUI();
+  if (typeof libSyncMark === 'function') libSyncMark();
+  if (typeof renderObjectList === 'function') renderObjectList();
+  drawPlot();
+}
+
+// Adds an object (selected), placed where asked or in free space, and rebuilds the path.
+function addObject(o, pl) {
+  S.plot.objects.push(o);
+  S.plot.sel = o.id;
+  setPlaceFor(o, pl || placeNew(o));
+  onSelectionChange();
+  return buildPlot();
+}
+
+function deleteObject(o) {
+  const i = S.plot.objects.indexOf(o);
+  if (i < 0 || S.running) return;
+  if (typeof objTrash === 'function') objTrash([o]);
+  S.plot.objects.splice(i, 1);
+  if (S.plot.sel === o.id) { const nx = S.plot.objects[Math.min(i, S.plot.objects.length - 1)]; S.plot.sel = nx ? nx.id : null; }
+  S.plot.placeVer++;
+  log(`Removed ${o.label} from the paper.`);
+  onSelectionChange();
+  buildPlot({ quiet: true });
+}
+
+// New drawing for the Plotter: added as a new object. opts.source: picture name — the selected
+// object from the same picture (or, with opts.update, any object from it) is replaced instead,
+// keeping its scale and place; opts.robotMm: strokes already in robot millimetres (air drawing).
 function setDrawing(strokes, label, opts = {}) {
   const sketchStrokes = opts.robotMm ? strokes.map(s => s.map(p => ({ x: -p.y, y: -p.x }))) : strokes;
-  const prev = S.plot.sketch, prevPl = S.plot.place;
   const sk = prepareSketch(sketchStrokes, opts.source || null);
-  let pl;
-  if (opts.robotMm) {
-    pl = { cx: -sk.srcBox.cy, cy: -sk.srcBox.cx, size: sk.srcBox.L, angle: 0, mirror: false };
-  } else if (opts.source && prev && prevPl && prev.source === opts.source) {
+  sk.shapes = !opts.robotMm && Array.isArray(strokes.shapes) ? strokes.shapes : null;   // fills, for shading
+  const so = selObj();
+  const same = opts.source ? (so && so.kind === 'drawing' && so.source === opts.source ? so
+    : opts.update ? [...S.plot.objects].reverse().find(x => x.kind === 'drawing' && x.source === opts.source) : null) : null;
+  if (same) {
+    const prev = same.sketch, prevPl = same.place;
     const k = prevPl.size / prev.srcBox.L, d = placeLinear(prevPl.angle, prevPl.mirror)({ x: sk.srcBox.cx - prev.srcBox.cx, y: sk.srcBox.cy - prev.srcBox.cy });
-    pl = { ...prevPl, cx: prevPl.cx + k * d.x, cy: prevPl.cy + k * d.y, size: k * sk.srcBox.L };
-  } else {
-    pl = defaultPlacement(sk);
+    same.sketch = sk; same.label = label; resetObjCaches(same);
+    S.plot.sel = same.id;
+    setPlaceFor(same, { ...prevPl, cx: prevPl.cx + k * d.x, cy: prevPl.cy + k * d.y, size: k * sk.srcBox.L });
+    onSelectionChange();
+    return buildPlot();
   }
-  S.plot.sketch = sk; S.plot.order = null; S.plot.ops = null; S.plot.label = label;
-  setPlace(pl);
-  return buildPlot();
+  const o = newObject('drawing', sk, label, { source: opts.source || null });
+  const pl = opts.robotMm ? { cx: -sk.srcBox.cy, cy: -sk.srcBox.cx, size: sk.srcBox.L, angle: 0, mirror: false } : null;
+  return addObject(o, pl);
 }
 
 async function loadSvgText(text, label) {
@@ -145,78 +285,169 @@ async function loadSvgText(text, label) {
   setDrawing(raw, label);
 }
 
-// Placement → robot path. The stroke order is worked out once per drawing (it only depends on the
-// drawing's own shape), so moving, turning or resizing it afterwards is instant.
+// Pen lines of one object in its own units (outlines and/or shading), in a good order. The order
+// is worked out once per drawing (it only depends on the drawing's own shape), so moving, turning
+// or resizing it afterwards is instant; copies of a drawing share it.
+function objectOrder(o, budget, reorder) {
+  const pl = o.place, shade = typeof shadeFor === 'function' ? shadeFor(o, pl.size) : null;
+  const outlinesOn = !shade || o.shade.outline !== false;
+  const all = shade ? (outlinesOn ? o.sketch.strokes : []).concat(shade.strokes) : o.sketch.strokes;
+  if (!all.length) return null;
+  const key = `${o.sketch.id}|${budget}|${shade ? shade.key + '|' + (outlinesOn ? 1 : 0) : 'plain'}`;
+  let ord = PL.order.get(key);
+  if (reorder || !ord) {
+    const index = new Map(all.map((s, i) => [s, i]));
+    const seq0 = orderStrokes(all, placeInverse(pl)(S.cmd || S.pos), budget);
+    ord = { key, all, seq: seq0.map(e => ({ i: index.get(e.pts), rev: e.rev })) };
+    PL.order.delete(key); PL.order.set(key, ord);
+    while (PL.order.size > 40) PL.order.delete(PL.order.keys().next().value);
+  }
+  o.orderRef = ord;
+  return ord;
+}
+
+// Objects one after another: always the nearest next one, drawn forwards or backwards.
+function chainObjects(parts, start) {
+  const rem = parts.map(p => {
+    const a = p.seq[0], b = p.seq[p.seq.length - 1];
+    return { ...p, first: a.rev ? a.pts[a.pts.length - 1] : a.pts[0], last: b.rev ? b.pts[0] : b.pts[b.pts.length - 1] };
+  });
+  const out = [], order = [];
+  let cur = start;
+  while (rem.length) {
+    let bi = 0, bd = Infinity, brev = false;
+    rem.forEach((p, i) => {
+      const d1 = Math.hypot(cur.x - p.first.x, cur.y - p.first.y), d2 = Math.hypot(cur.x - p.last.x, cur.y - p.last.y);
+      if (d1 < bd) { bd = d1; bi = i; brev = false; }
+      if (d2 < bd) { bd = d2; bi = i; brev = true; }
+    });
+    const p = rem.splice(bi, 1)[0];
+    if (brev) { for (let k = p.seq.length - 1; k >= 0; k--) out.push({ pts: p.seq[k].pts, rev: !p.seq[k].rev }); cur = p.first; }
+    else { for (const e of p.seq) out.push(e); cur = p.last; }
+    order.push(p.o.id);
+  }
+  return { seq: out, order };
+}
+
+// Placements → robot path for every ticked object.
 function buildPlot(opts = {}) {
-  const sk = S.plot.sketch;
-  if (!sk) { log('Load a drawing first.', 'warn'); return false; }
+  const objs = S.plot.objects;
+  if (!objs.length) {
+    S.plot.ops = null; S.plot.stats = null; S.plot.drawnIds = [];
+    if (typeof paperAutosave === 'function') paperAutosave();
+    document.getElementById('plot-stats').textContent = 'Load a drawing, a picture or add text to start.';
+    if (!opts.quiet) log('Load a drawing first.', 'warn');
+    if (typeof renderShadeStats === 'function') renderShadeStats();
+    drawPlot();
+    return false;
+  }
   try {
     const tol = parseFloat(plotOpt('plot-tol')), minLen = parseFloat(plotOpt('plot-minlen'));
     const join = parseFloat(plotOpt('plot-join')), budget = parseFloat(plotOpt('plot-opt'));
     if (![tol, minLen, join, budget].every(Number.isFinite)) throw new Error('Check the optimisation values');
-    const z = drawZone();
-    const fixed = fitPlace(S.plot.place);
-    if (!fixed) throw new Error('The drawing does not fit in the green zone at any size. Check the pen heights (Setup → Auto-calibrate) or lower the safety margin.');
-    if (fixed.fixed) {
-      setPlace(fixed);
-      log(fixed.shrunk ? `Drawing made smaller (${fixed.size.toFixed(0)} mm) so it fits in the green zone.` : 'Drawing moved so it fits inside the green zone.', 'warn');
+    const z = drawZone(), parts = [];
+    for (const o of objs) {
+      const fixed = fitPlaceFor(o, o.place);
+      if (!fixed) {
+        o.placeOk = false;
+        if (o.use) log(`${o.label} does not fit in the green zone at any size. Check the pen heights (Setup → Auto-calibrate) or lower the safety margin.`, 'err');
+        continue;
+      }
+      if (fixed.fixed) {
+        setPlaceFor(o, fixed);
+        log(fixed.shrunk ? `${o.label} made smaller (${fixed.size.toFixed(0)} mm) so it fits in the green zone.` : `${o.label} moved so it fits inside the green zone.`, 'warn');
+      }
+      if (!o.use) continue;
+      const ord = objectOrder(o, budget, opts.reorder);
+      if (!ord) continue;
+      const f = placeXform(o.place), seq = [];
+      for (const e of ord.seq) {
+        const c = cleanStrokes([ord.all[e.i].map(f)], tol, minLen);
+        if (c.length) seq.push({ pts: c[0], rev: e.rev });
+      }
+      if (seq.length) parts.push({ o, seq });
     }
-    const pl = S.plot.place, f = placeXform(pl), okey = `${sk.id}|${budget}`;
-    if (opts.reorder || !S.plot.order || S.plot.order.key !== okey) {
-      const index = new Map(sk.strokes.map((s, i) => [s, i]));
-      const seq0 = orderStrokes(sk.strokes, placeInverse(pl)(S.cmd || S.pos), budget);
-      S.plot.order = { key: okey, seq: seq0.map(e => ({ i: index.get(e.pts), rev: e.rev })) };
+    if (!parts.length) {
+      throw new Error(!objs.some(o => o.use) ? 'Nothing to draw — tick at least one object in the list above the map.'
+        : objs.some(o => o.use && o.placeOk !== false) ? 'Nothing left after simplification — lower the minimum length, or turn the outlines on.'
+        : 'Nothing fits in the green zone. Check the pen heights (Setup → Auto-calibrate) or lower the safety margin.');
     }
-    const seq = [];
-    for (const o of S.plot.order.seq) {
-      const c = cleanStrokes([sk.strokes[o.i].map(f)], tol, minLen);
-      if (c.length) seq.push({ pts: c[0], rev: o.rev });
-    }
-    if (!seq.length) throw new Error('Nothing left after simplification — lower the minimum length.');
-    const start = { ...(S.cmd || S.pos) };
+    const start = { ...(S.cmd || S.pos) }, ch = chainObjects(parts, start), seq = ch.seq;
     const ops = buildOps(seq, start, join);
-    const fr = placeFrame(sk, pl), xs = fr.map(p => p.x), ys = fr.map(p => p.y);
-    S.plot.strokes = seq.map(e => e.pts); S.plot.ops = ops; S.plot.start = start;
-    S.plot.rect = { cx: (Math.min(...xs) + Math.max(...xs)) / 2, cy: (Math.min(...ys) + Math.max(...ys)) / 2, w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const p of parts) for (const q of placeFrame(p.o.sketch, p.o.place)) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y); }
+    S.plot.strokes = seq.map(e => e.pts); S.plot.ops = ops; S.plot.start = start; S.plot.drawnIds = ch.order;
+    S.plot.rect = { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, w: x1 - x0, h: y1 - y0 };
     S.plot.stats = opsStats(ops, start);
+    S.plot.stats.split = travelSplit(ops, start, hopSettings().hopMax);
     S.plot.stats.count = seq.length;
-    S.plot.stats.pointsBefore = sk.points;
+    S.plot.stats.objects = parts.length;
+    S.plot.stats.pointsBefore = parts.reduce((a, p) => a + p.o.sketch.points, 0);
     S.plot.stats.pointsAfter = seq.reduce((a, e) => a + e.pts.length, 0);
     S.plot.opsVer = S.plot.placeVer; S.plot.zoneKey = zoneKey(z);
+    if (typeof paperAutosave === 'function') paperAutosave();
     renderPlotStats();
+    if (typeof renderShadeStats === 'function') renderShadeStats();
+    if (typeof renderObjectList === 'function') renderObjectList();
     drawPlot();
     return true;
   } catch (e) {
-    S.plot.ops = null;
+    S.plot.ops = null; S.plot.drawnIds = [];
+    if (typeof paperAutosave === 'function') paperAutosave();
     log('Build failed: ' + e.message, 'err');
     document.getElementById('plot-stats').textContent = e.message;
+    if (typeof renderObjectList === 'function') renderObjectList();
     drawPlot();
     return false;
   }
 }
 
 function renderPlotStats() {
-  const s = S.plot.stats, pl = S.plot.place, sk = S.plot.sketch;
-  if (!s || !pl || !sk) return;
-  const turn = pl.angle ? `, turned ${+pl.angle.toFixed(1)}°` : '';
+  const s = S.plot.stats;
+  if (!s) return;
+  const drawn = (S.plot.drawnIds || []).map(objById).filter(Boolean);
+  let what;
+  if (drawn.length === 1) {
+    const o = drawn[0], pl = o.place, sk = o.sketch, turn = pl.angle ? `, turned ${+pl.angle.toFixed(1)}°` : '';
+    what = `${(sk.w * pl.size).toFixed(0)} × ${(sk.h * pl.size).toFixed(0)} mm${turn}${pl.mirror ? ', mirrored' : ''}`;
+  } else what = `${drawn.length} objects`;
+  const skipped = S.plot.objects.length - drawn.length;
   document.getElementById('plot-stats').textContent =
-    `${(sk.w * pl.size).toFixed(0)} × ${(sk.h * pl.size).toFixed(0)} mm${turn}${pl.mirror ? ', mirrored' : ''} · ${s.count} strokes · ${s.lifts} pen lifts · ` +
+    `${what}${skipped > 0 ? ` (${skipped} not drawn)` : ''} · ${s.count} strokes · ${s.lifts} pen lifts · ` +
     `drawing ${s.draw.toFixed(0)} mm · travel ${s.travel.toFixed(0)} mm · est. ${estimateMinutes(s).toFixed(1)} min`;
 }
 
+// Pen hops in smooth mode: gaps up to hopMax mm are low rounded hops at the pen speed; longer ones
+// lift fully and travel at the travel speed.
+function hopSettings() {
+  const n = (id, d) => { const v = parseFloat(plotOpt(id)); return Number.isFinite(v) ? v : d; };
+  return { hopMin: Math.max(1, n('plot-hopmin', 3)), hopMax: Math.max(0, n('plot-hopmax', 40)), maxSeg: 3 };
+}
+
+// Pen-up travel split into short hops and long jumps (for the time estimate).
+function travelSplit(ops, start, hopMax) {
+  let hops = 0, jumps = 0, jumpCount = 0, prev = start;
+  for (const op of ops) {
+    const d = Math.hypot(op.x - prev.x, op.y - prev.y);
+    if (!op.pen && d > 0.01) { if (d <= hopMax) hops += d; else { jumps += d; jumpCount++; } }
+    prev = op;
+  }
+  return { hops, jumps, jumpCount };
+}
+
 function estimateMinutes(s) {
-  const smooth = plotOpt('plot-motion') === 'smooth';
-  const draw = (s.draw / (S.speed.draw || 30)) * (smooth ? 1.15 : 1.8);   // precise mode stops at points
-  const travel = s.travel / (smooth ? (S.speed.travel || 100) : (S.speed.draw || 30));
-  return (draw + travel + s.lifts * 0.8) / 60;
+  const smooth = plotOpt('plot-motion') === 'smooth', vd = S.speed.draw || 30, vt = S.speed.travel || 100;
+  if (!smooth || !s.split) return ((s.draw / vd) * 1.8 + s.travel / vd + s.lifts * 0.8) / 60;   // precise mode stops at points
+  const { hops, jumps, jumpCount } = s.split;
+  return ((s.draw / vd) * 1.1 + (hops / vd) * 1.4 + jumps / vt + jumpCount * 1.2) / 60;
 }
 
 /* ----- plotter canvas ----- */
 function plotView() { return viewOf(plotCv, Math.max(S.limits.maxR, drawBand().maxR)); }
 
-// Screen positions of the drawing's frame (TL, TR, BR, BL), centre and rotate knob.
-function frameGeom(v) {
-  const sk = S.plot.sketch, pl = S.plot.place;
+// Screen positions of an object's frame (TL, TR, BR, BL), centre and rotate knob.
+function frameGeom(v, o = selObj()) {
+  const sk = o.sketch, pl = o.place;
   const fr = placeFrame(sk, pl).map(p => v.toS(p.x, p.y)), c = v.toS(pl.cx, pl.cy);
   const top = [(fr[0][0] + fr[1][0]) / 2, (fr[0][1] + fr[1][1]) / 2];
   const up = placeLinear(pl.angle, pl.mirror)({ x: 0, y: -1 });       // drawing "up", robot frame
@@ -267,6 +498,14 @@ function drawPreview(ctx, v, P, pl, color) {
     }
   }
   ctx.stroke();
+}
+
+// A light dotted frame round an object the pointer is over (click to select it).
+function drawHoverFrame(ctx, v, o) {
+  const g = frameGeom(v, o);
+  ctx.save(); ctx.strokeStyle = cssVar('--accent'); ctx.globalAlpha = 0.55; ctx.lineWidth = 1; ctx.setLineDash([2, 3]);
+  ctx.beginPath(); g.fr.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath(); ctx.stroke();
+  ctx.restore();
 }
 
 function drawFrame(ctx, v, ok, handles) {
@@ -327,16 +566,31 @@ function drawPlot() {
   const ctx = setupCanvas(plotCv), v = plotView(), z = drawZone();
   drawBase(plotCv, v, ctx, { band: false });
   drawZoneShape(ctx, v, z);
-  const sk = S.plot.sketch, pl = S.plot.place;
-  if (sk && pl) {
+  const objs = S.plot.objects;
+  if (objs.length) {
     if (S.plot.zoneKey && S.plot.zoneKey !== zoneKey(z) && !S.running && !PL.drag) {   // reach or margin changed
-      clearTimeout(PL.zt); PL.zt = setTimeout(() => buildPlot(), 30);
+      clearTimeout(PL.zt); PL.zt = setTimeout(() => buildPlot({ quiet: true }), 30);
     }
-    const ink = cssVar('--ink'), muted = cssVar('--muted');
-    if (S.plot.ops && S.plot.opsVer === S.plot.placeVer) drawOpsPaths(ctx, v, S.plot.ops, S.plot.start, ink, muted);
-    else drawPreview(ctx, v, plProbe(), pl, S.plot.placeOk ? ink : cssVar('--err'));
-    drawFrame(ctx, v, S.plot.placeOk !== false, !S.running);
+    const ink = cssVar('--ink'), muted = cssVar('--muted'), err = cssVar('--err');
+    const built = !!S.plot.ops && S.plot.opsVer === S.plot.placeVer, inPath = new Set(built ? S.plot.drawnIds : []);
+    if (built) drawOpsPaths(ctx, v, S.plot.ops, S.plot.start, ink, muted);
+    for (const o of objs) {                              // the rest: fast previews (also while dragging)
+      if (!o.place || inPath.has(o.id)) continue;
+      const col = !o.use ? muted : o.placeOk === false ? err : ink;
+      ctx.save();
+      if (!o.use) { ctx.setLineDash([4, 3]); ctx.globalAlpha = 0.8; }
+      drawPreview(ctx, v, objProbe(o), o.place, col);
+      ctx.restore();
+      if (o.use && typeof shadePreview === 'function') shadePreview(ctx, v, o, col);
+    }
+    const so = selObj(), hv = PL.hover != null ? objById(PL.hover) : null;
+    if (hv && hv !== so && !PL.drag && !S.running) drawHoverFrame(ctx, v, hv);
+    if (so && so.place) {
+      drawFrame(ctx, v, so.placeOk !== false, !S.running);
+      if (typeof shadeOverlay === 'function') shadeOverlay(ctx, v);
+    }
   }
+  drawHoverFrame2(ctx, v);
   drawPaper(ctx, v);
   if (S.dev) drawLaser(ctx, v, S.pos, !S.running);
 }
@@ -353,14 +607,18 @@ function unreachableCount(cmds) {
   return cmds.filter(c => !magReachable(c.x, c.y, c.z, S.model, 0.5)).length;
 }
 
-// Straight moves at one height that would pass closer to the base than the arm can reach there.
+// Straight moves that would pass closer to the base than the arm can reach: moves between the pen
+// heights are checked against the drawing band, level moves elsewhere against the reach at that height.
 function coreCuts(cmds, start) {
+  const zLo = S.limits.zDown - 0.6, zHi = S.limits.zUp + 0.6, band = drawBand();
   let n = 0, prev = start;
   for (const c of cmds) {
     if (c.x === undefined) continue;
-    if (prev && Math.abs(c.z - prev.z) < 0.01) {
-      const band = S.model && S.model.ok ? reachAt(S.model, c.z) : [S.limits.minR, S.limits.maxR];
-      if (band && segDist0(prev.x, prev.y, c.x, c.y) < band[0] - 0.5) n++;
+    if (prev) {
+      let rMin = null;
+      if (c.z >= zLo && c.z <= zHi && prev.z >= zLo && prev.z <= zHi) rMin = band.minR;
+      else if (Math.abs(c.z - prev.z) < 0.01) { const b = S.model && S.model.ok ? reachAt(S.model, c.z) : [S.limits.minR]; rMin = b ? b[0] : null; }
+      if (rMin != null && segDist0(prev.x, prev.y, c.x, c.y) < rMin - 0.5) n++;
     }
     prev = c;
   }
@@ -369,7 +627,7 @@ function coreCuts(cmds, start) {
 
 async function runDrawing(name, ops, start) {
   const smooth = plotOpt('plot-motion') === 'smooth';
-  const planned = plotCommands(ops, S.limits, start, { cp: smooth, speed: S.speed.draw, core: drawZone().rIn });
+  const planned = plotCommands(ops, S.limits, start, { cp: smooth, continuous: smooth, speed: S.speed.draw, core: drawZone().rIn, ...hopSettings() });
   const bad = unreachableCount(planned);       // check first, so nothing is silently squashed
   if (bad) return log(`${bad} point(s) are outside the arm's reach at pen height. Keep the drawing inside the green zone; if the arm is far away, press Centre (home) first.`, 'err');
   const cuts = coreCuts(planned, start);
@@ -428,15 +686,16 @@ function squareFits(z, c, h) {
   return pts.every(p => zoneHas(z, p.x, p.y)) && pts.every((p, i) => { const q = pts[(i + 1) % 4]; return segDist0(p.x, p.y, q.x, q.y) >= z.rIn; });
 }
 
-// Where to draw the 20 mm test square: next to the drawing (as close as possible, so it is on the
-// same sheet, but clear of it), or the middle of the green zone when no drawing is loaded.
+// Where to draw the 20 mm test square: beside the objects on the paper (as close as possible, so it is
+// on the same sheet, but clear of every one of them), or the middle of the green zone when the paper is empty.
 function testSquareSpot(z, h) {
-  if (!S.plot.sketch || !S.plot.place) {
+  const objs = S.plot.objects.filter(o => o.place);
+  if (!objs.length) {
     const c = { x: (z.rIn + z.rOut) / 2, y: 0 };
     return squareFits(z, c, h) ? c : null;
   }
-  const pl = S.plot.place, fr = placeFrame(S.plot.sketch, pl), clear = h * Math.SQRT2 + 5;
-  const outside = c => {                                     // distance from the frame, 0 if inside it
+  const frames = objs.map(o => placeFrame(o.sketch, o.place)), clear = h * Math.SQRT2 + 5;
+  const outside1 = (fr, c) => {                              // distance from a frame, 0 if inside it
     let pos = 0, neg = 0, d = Infinity;
     for (let i = 0; i < 4; i++) {
       const a = fr[i], b = fr[(i + 1) % 4], ex = b.x - a.x, ey = b.y - a.y, L2 = ex * ex + ey * ey;
@@ -447,11 +706,19 @@ function testSquareSpot(z, h) {
     }
     return pos && neg ? d : 0;
   };
-  const r0 = Math.hypot(fr[0].x - pl.cx, fr[0].y - pl.cy);
+  const outside = c => Math.min(...frames.map(fr => outside1(fr, c)));
+  const so = selObj(), ref = so && so.place ? so : objs[objs.length - 1], pl = ref.place, fr0 = placeFrame(ref.sketch, pl);
+  const r0 = Math.hypot(fr0[0].x - pl.cx, fr0[0].y - pl.cy);
   for (let d = Math.max(clear, r0 * 0.5); d <= r0 + 160; d += 4) {
     for (let k = 0; k < 24; k++) {
       const a = Math.PI + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * Math.PI / 12;   // towards the base first, then round
       const c = { x: pl.cx + d * Math.cos(a), y: pl.cy + d * Math.sin(a) };
+      if (outside(c) >= clear && squareFits(z, c, h)) return c;
+    }
+  }
+  for (let r = z.rIn + h * 1.5; r <= z.rOut - h * 1.5; r += 4) {   // anywhere free in the zone
+    for (let th = 0; th <= 90; th += 3) for (const a of th ? [th, -th] : [0]) {
+      const c = { x: r * Math.cos(a * RAD), y: r * Math.sin(a * RAD) };
       if (outside(c) >= clear && squareFits(z, c, h)) return c;
     }
   }
@@ -462,10 +729,85 @@ function testSquareSpot(z, h) {
 async function testSquare() {
   if (!penReady()) return;
   const z = drawZone(), h = 10, c = testSquareSpot(z, h);
-  if (!c) return log('No free spot in the green zone for a 20 mm square — make the drawing smaller or check the pen heights.', 'err');
+  if (!c) return log('No free spot in the green zone for a 20 mm square — make the drawings smaller or check the pen heights.', 'err');
   const sq = [[c.x - h, c.y - h], [c.x - h, c.y + h], [c.x + h, c.y + h], [c.x + h, c.y - h], [c.x - h, c.y - h]].map(([x, y]) => ({ x, y }));
   const ops = buildOps([{ pts: sq, rev: false }], S.cmd || S.pos, 0.5);
   try { await runDrawing('Test square', ops, S.cmd || S.pos); } catch (e) { log(e.message, 'err'); }
+}
+
+// The hover round: the pen goes once round the outside of everything that will be drawn, held just
+// above the paper, to check the paper is in the right place. 'box': round the corners of a rectangle
+// (square to the paper) that holds every line; 'outline': tight round the outside of the lines.
+// The round keeps `margin` mm outside the lines, and never cuts across the unreachable middle.
+function hoverRoundLoop(shape, margin = 3) {
+  const pts = (S.plot.ops || []).filter(o => o.pen);
+  if (pts.length < 2) return null;
+  const zH = S.limits.penSet ? Math.min(S.limits.zUp, S.limits.zDown + 5) : S.limits.zUp;
+  const reach = (x, y) => S.model && S.model.ok ? magReachable(x, y, zH, S.model, 0.5) : (() => { const c = clampTarget(x, y, zH); return Math.hypot(c.x - x, c.y - y) < 0.5; })();
+  const core = drawZone().rIn;
+  // closed loop → robot moves, with arcs round the base where a straight line would cut too close
+  const route = loop => {
+    const out = [];
+    for (let i = 0; i <= loop.length; i++) {
+      const a = loop[(i + loop.length - 1) % loop.length], b = loop[i % loop.length];
+      if (i) for (const w of arcWaypoints(a, b, core)) out.push(w);
+      out.push(b);
+    }
+    return out;
+  };
+  const ok = path => path.every((p, i) => {
+    if (!reach(p.x, p.y)) return false;
+    if (!i) return true;
+    const a = path[i - 1], n = Math.ceil(Math.hypot(p.x - a.x, p.y - a.y) / 5);
+    for (let k = 1; k < n; k++) if (!reach(a.x + (p.x - a.x) * k / n, a.y + (p.y - a.y) * k / n)) return false;
+    return true;
+  });
+  const tries = [];
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const p of pts) { if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x; if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y; }
+  const box = m => [{ x: x1 + m, y: y1 + m }, { x: x1 + m, y: y0 - m }, { x: x0 - m, y: y0 - m }, { x: x0 - m, y: y1 + m }];   // screen: top-left, top-right, bottom-right, bottom-left
+  const hull = convexHull(pts), cx = hull.reduce((a, p) => a + p.x, 0) / hull.length, cy = hull.reduce((a, p) => a + p.y, 0) / hull.length;
+  const outline = m => hull.map(p => { const d = Math.hypot(p.x - cx, p.y - cy) || 1; return { x: p.x + m * (p.x - cx) / d, y: p.y + m * (p.y - cy) / d }; });
+  const ms = [margin, margin * 2 / 3, margin / 3, 0];          // a smaller margin before giving up on the shape
+  if (shape === 'box') for (const m of ms) tries.push(['box', box(m)]);
+  for (const m of ms) tries.push(['outline', outline(m)]);
+  for (const [kind, loop] of tries) {
+    const path = route(loop);
+    if (ok(path)) return { kind, loop, path, z: zH, fellBack: kind !== shape };
+  }
+  return null;
+}
+
+async function hoverRound() {
+  if (!S.dev) return log('Connect or start the simulator first.', 'warn');
+  if (!S.plot.objects.some(o => o.use)) return log('Put something on the paper first (and tick it).', 'warn');
+  if (S.plot.opsVer !== S.plot.placeVer || !S.plot.ops) { if (!buildPlot({ quiet: true })) return; }
+  const shape = plotOpt('plot-frame') === 'outline' ? 'outline' : 'box';
+  const r = hoverRoundLoop(shape);
+  if (!r) return log('There is no way round these drawings that the arm can reach — move them a little away from the edges of the green zone.', 'err');
+  if (r.fellBack) log('The corners of the box are out of the arm\'s reach, so the round follows the outline of the drawings instead.', 'warn');
+  const start = S.cmd || S.pos, z = r.z, core = drawZone().rIn, cmds = [];
+  if (start.z < z - 0.5) cmds.push({ x: start.x, y: start.y, z, mode: 2 });
+  for (const w of arcWaypoints(start, r.path[0], core)) cmds.push({ x: w.x, y: w.y, z: Math.max(z, start.z), mode: 2 });
+  cmds.push({ x: r.path[0].x, y: r.path[0].y, z, mode: 2 });
+  for (const p of r.path.slice(1)) cmds.push({ x: p.x, y: p.y, z, mode: 2 });
+  cmds.push({ x: r.path[0].x, y: r.path[0].y, z: Math.max(z, S.limits.zUp), mode: 2 });   // lift at the end
+  PL.frame = { path: r.path, until: Infinity };
+  drawPlot();
+  const lenMm = r.path.reduce((a, p, i) => a + (i ? Math.hypot(p.x - r.path[i - 1].x, p.y - r.path[i - 1].y) : 0), 0);
+  log(`Hover round (${r.kind === 'box' ? 'box' : 'outline'}, ${lenMm.toFixed(0)} mm, ${(z - S.limits.zDown).toFixed(0)} mm above the paper): watch that the pen stays over the paper.`);
+  try { await runJob('Hover round', cmds, document.getElementById('plot-bar'), { speed: Math.min(S.speed.travel || 60, 60) }); }
+  catch (e) { log(e.message, 'err'); }
+  finally { PL.frame.until = performance.now() + 5000; setTimeout(() => drawPlot(), 5100); drawPlot(); }
+}
+
+// The hover round's path on the map (dashed), while it runs and for a few seconds after.
+function drawHoverFrame2(ctx, v) {
+  const f = PL.frame;
+  if (!f || performance.now() > f.until) return;
+  ctx.save(); ctx.strokeStyle = cssVar('--warn'); ctx.lineWidth = 1.6; ctx.setLineDash([6, 4]); ctx.beginPath();
+  f.path.forEach((p, i) => { const [x, y] = v.toS(p.x, p.y); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+  ctx.stroke(); ctx.restore();
 }
 
 async function togglePause() {
@@ -488,7 +830,9 @@ function renderPause() {
 // Export the optimised path as JSON (robot-space mm, pen flag per move) for reuse.
 function exportOps() {
   if (!S.plot.ops) return log('Build the path first.', 'warn');
-  const data = { format: 'magician-ops-v1', units: 'mm', zUp: S.limits.zUp, zDown: S.limits.zDown, placement: S.plot.place, stats: S.plot.stats, ops: S.plot.ops.map(o => [+o.x.toFixed(3), +o.y.toFixed(3), o.pen ? 1 : 0]) };
+  const objects = (S.plot.drawnIds || []).map(objById).filter(Boolean).map(o => ({ label: o.label, kind: o.kind, placement: o.place, ...(o.text ? { text: o.text } : {}) }));
+  const data = { format: 'magician-ops-v1', units: 'mm', zUp: S.limits.zUp, zDown: S.limits.zDown, placement: objects.length === 1 ? objects[0].placement : null, objects,
+                 stats: S.plot.stats, ops: S.plot.ops.map(o => [+o.x.toFixed(3), +o.y.toFixed(3), o.pen ? 1 : 0]) };
   downloadText('plot-ops.json', JSON.stringify(data));
 }
 

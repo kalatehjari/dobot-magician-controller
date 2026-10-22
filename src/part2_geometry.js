@@ -66,6 +66,51 @@ function maxReachRect(minR, maxR, margin) {
   return best;
 }
 
+// The same nearest-neighbour order, found with a grid of stroke ends instead of checking every
+// stroke at every step, so drawings with thousands of strokes (shading, traced pictures) order fast.
+function nearestOrderGrid(items, start) {
+  const n = items.length, end = (e, k) => (k ? e.pts[e.pts.length - 1] : e.pts[0]);
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const e of items) for (const k of [0, 1]) { const p = end(e, k); x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); }
+  const w = Math.max(x1 - x0, 1e-9), h = Math.max(y1 - y0, 1e-9), cs = Math.max(Math.sqrt(w * h / n), Math.max(w, h) / 4000, 1e-9);
+  const nx = Math.floor(w / cs) + 1, ny = Math.floor(h / cs) + 1, cells = new Map();
+  const gx = p => Math.min(nx - 1, Math.max(0, Math.floor((p.x - x0) / cs))), gy = p => Math.min(ny - 1, Math.max(0, Math.floor((p.y - y0) / cs)));
+  items.forEach((e, i) => { for (const k of [0, 1]) { const c = gx(end(e, k)) + gy(end(e, k)) * nx; if (!cells.has(c)) cells.set(c, []); cells.get(c).push(2 * i + k); } });
+  const used = new Uint8Array(n), seq = [];
+  const take = (i, k) => { const e = items[i]; e.rev = k === 1; used[i] = 1; seq.push(e); return end(e, k ? 0 : 1); };
+  // first stroke: plain search (the pen may start anywhere)
+  let bi = 0, bk = 0, bd = Infinity;
+  items.forEach((e, i) => { for (const k of [0, 1]) { const d = dist(start, end(e, k)); if (d < bd) { bd = d; bi = i; bk = k; } } });
+  let cur = take(bi, bk);
+  while (seq.length < n) {
+    const cx = gx(cur), cy = gy(cur);
+    let best = -1, bestD = Infinity;
+    for (let r = 0; r <= nx + ny; r++) {
+      if (best >= 0 && bestD <= (r - 1) * cs) break;               // nothing nearer can be further out
+      for (let ix = cx - r; ix <= cx + r; ix++) {
+        if (ix < 0 || ix >= nx) continue;
+        const ring = Math.abs(ix - cx) === r ? null : [cy - r, cy + r];
+        for (let iy = ring ? ring[0] : cy - r; iy <= (ring ? ring[1] : cy + r); iy += ring ? 2 * r || 1 : 1) {
+          if (iy < 0 || iy >= ny) continue;
+          const list = cells.get(ix + iy * nx);
+          if (!list) continue;
+          let live = 0;
+          for (const code of list) {
+            const i = code >> 1;
+            if (used[i]) continue;
+            list[live++] = code;
+            const d = dist(cur, end(items[i], code & 1));
+            if (d < bestD) { bestD = d; best = code; }
+          }
+          list.length = live;
+        }
+      }
+    }
+    cur = take(best >> 1, best & 1);
+  }
+  return seq;
+}
+
 // Orders strokes to minimise pen-up travel: nearest-neighbour start, then 2-opt improvement
 // (a stroke can be reversed if that shortens travel). Respects a time budget.
 function orderStrokes(strokes, start, budgetMs) {
@@ -73,8 +118,8 @@ function orderStrokes(strokes, start, budgetMs) {
   const sp = e => e.rev ? e.pts[e.pts.length - 1] : e.pts[0];
   const ep = e => e.rev ? e.pts[0] : e.pts[e.pts.length - 1];
 
-  const seq = [];
-  const rem = items.slice();
+  const seq = items.length > 300 ? nearestOrderGrid(items, start) : [];
+  const rem = seq.length ? [] : items.slice();
   let cur = start;
   while (rem.length) {
     let bi = -1, bd = Infinity, brev = false;
@@ -232,6 +277,7 @@ function orientStrokes(strokes, quarterTurns, mirror) {
 // does not stop at every point. Very short drawing segments are merged (opts.minSeg mm).
 // opts.core: radius (mm) the pen-up travel must stay outside; longer hops follow the arc around it.
 function plotCommands(ops, L, start, opts = {}) {
+  if (opts.cp && opts.continuous) return plotCommandsContinuous(ops, L, start, opts);
   const cmds = [], zU = L.zUp, zD = L.zDown, minSeg = opts.minSeg ?? 0.4;
   if (start && start.z < zU - 0.5) cmds.push({ x: start.x, y: start.y, z: zU, mode: 2 });
   let prev = start ? { x: start.x, y: start.y, pen: false } : null, lastDrawn = null;
@@ -252,6 +298,60 @@ function plotCommands(ops, L, start, opts = {}) {
       lastDrawn = op;
     }
     prev = op;
+  }
+  return cmds;
+}
+
+// Smooth drawing as one continuous CP stream, so the arm's lookahead never has to stop: strokes are
+// cut into short even pieces, short pen-up hops become low rounded arcs (hopPath), and only long
+// jumps lift fully and travel point-to-point at the travel speed.
+// opts: speed (mm/s), core (radius to keep out of), maxSeg, hopMax, hopMin, minSeg (mm).
+function plotCommandsContinuous(ops, L, start, opts = {}) {
+  const zU = L.zUp, zD = L.zDown, v = opts.speed ?? 30, core = opts.core || 0;
+  const maxSeg = opts.maxSeg ?? 3, hopMax = opts.hopMax ?? 40, hopMin = opts.hopMin ?? 3, minSeg = opts.minSeg ?? 0.4;
+  const cmds = [];
+  const CP = (x, y, z) => cmds.push({ kind: 'cp', x, y, z, v });
+  const PTP = (x, y, z) => cmds.push({ x, y, z, mode: 2 });
+  const strokes = [];
+  let cur = null;
+  for (const op of ops) {
+    if (op.pen) { if (!cur) { cur = [op]; strokes.push(cur); } else cur.push(op); }
+    else cur = null;
+  }
+  if (!strokes.length) return cmds;
+  const flyTo = (from, s) => {                       // long jump: straight move above the paper
+    for (const w of arcWaypoints(from, s, core)) PTP(w.x, w.y, zU);
+    PTP(s.x, s.y, zU);
+    CP(s.x, s.y, zD);
+  };
+  const s0 = strokes[0][0];
+  if (start) {
+    if (start.z < zU - 0.5) PTP(start.x, start.y, zU);
+    flyTo(start, s0);
+  } else {
+    PTP(s0.x, s0.y, zU); CP(s0.x, s0.y, zD);
+  }
+  for (let k = 0; k < strokes.length; k++) {
+    const st = strokes[k];
+    let last = st[0];
+    for (let i = 1; i < st.length; i++) {
+      const p = st[i], len = Math.hypot(p.x - last.x, p.y - last.y);
+      if (len < 1e-9 || (len < minSeg && i < st.length - 1)) continue;   // merge tiny pieces, keep the stroke end
+      for (const q of splitSegment(last, p, maxSeg)) CP(q.x, q.y, zD);
+      CP(p.x, p.y, zD);
+      last = p;
+    }
+    const next = strokes[k + 1];
+    if (!next) { CP(last.x, last.y, zU); break; }
+    const s = next[0], d = Math.hypot(s.x - last.x, s.y - last.y);
+    if (d <= hopMax) {
+      for (const q of hopPath(last, s, zD, hopHeight(d, hopMin, zU - zD), core)) CP(q.x, q.y, q.z);
+    } else if (arcWaypoints(last, s, core).length) {   // a long jump around the base: one continuous arc at full height
+      for (const q of hopPath(last, s, zD, zU - zD, core)) CP(q.x, q.y, q.z);
+    } else {
+      CP(last.x, last.y, zU);
+      flyTo(last, s);
+    }
   }
   return cmds;
 }

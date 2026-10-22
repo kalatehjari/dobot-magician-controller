@@ -22,7 +22,11 @@ $id('btnSaveSetup').onclick = () => {
   try { readSetup(); log('Settings saved.', 'ok'); if (S.dev) S.dev.setSpeed(S.speed.live, S.speed.accel).catch(() => {}); drawAll(); }
   catch (e) { log(e.message, 'err'); }
 };
-$id('btnResetSetup').onclick = () => { S.limits = structuredClone(DEFAULTS.limits); S.speed = structuredClone(DEFAULTS.speed); writeSetup(); log('Defaults restored (not yet saved to device).'); };
+$id('btnResetSetup').onclick = () => {
+  S.limits = structuredClone(DEFAULTS.limits);
+  S.speed = structuredClone((MOTION_PROFILES[S.motion.profile] || MOTION_PROFILES.quiet).speeds);
+  writeSetup(); log('Defaults restored for the current motion feel (press Save to keep them).');
+};
 $id('btnSetPenDown').onclick = () => {
   if (!S.pos) return;
   const z = Math.round(S.pos.z * 10) / 10;
@@ -56,8 +60,8 @@ dropZone.addEventListener('drop', async e => {
   const f = e.dataTransfer.files[0]; if (!f) return;
   await loadPlotFile(f);
 });
-['plot-tol', 'plot-minlen', 'plot-join', 'plot-opt'].forEach(id => {
-  $id(id).onchange = () => { if (S.plot.sketch) buildPlot(); };
+['plot-tol', 'plot-minlen', 'plot-join', 'plot-opt', 'plot-hopmax'].forEach(id => {
+  $id(id).onchange = () => { if (S.plot.objects.length) buildPlot({ quiet: true }); };
 });
 $id('btnBuild').onclick = () => buildPlot({ reorder: true });
 $id('btnDraw').onclick = () => drawPlotJob();

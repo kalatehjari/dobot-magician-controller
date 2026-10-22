@@ -79,7 +79,7 @@ function drawTracePreview() {
 
 function useTrace() {
   if (!TR.result || !TR.result.paths.length) return log('No lines found — lower the detail threshold or change the mode.', 'warn');
-  setDrawing(pathsToStrokes(TR.result.paths), TR.name, { source: `${TR.name}|${TR.bitmap.width}x${TR.bitmap.height}` });
+  setDrawing(pathsToStrokes(TR.result.paths), TR.name, { source: `${TR.name}|${TR.bitmap.width}x${TR.bitmap.height}`, update: true });   // re-tracing replaces it
   log(`Picture converted: ${TR.result.paths.length} lines. Check the preview, then Draw.`, 'ok');
 }
 
@@ -102,6 +102,7 @@ document.getElementById('btnTraceUse').onclick = useTrace;
 document.getElementById('btnTraceSvg').onclick = downloadTraceSvg;
 document.getElementById('btnPause').onclick = togglePause;
 document.getElementById('btnTestSquare').onclick = () => testSquare();
+document.getElementById('btnHoverRound').onclick = () => hoverRound();
 document.getElementById('btnAutoCal').onclick = () => openAutoCal();
 document.getElementById('plot-motion').onchange = () => { if (S.plot.stats) renderPlotStats(); };
 for (const [id, key] of [['plot-speed', 'draw'], ['plot-travel', 'travel']]) {

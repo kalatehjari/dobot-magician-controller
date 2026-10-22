@@ -152,16 +152,45 @@ function hullSizeBound(P, cx, cy, z, pad = 0) {
   return Number.isFinite(s) ? s : 0;
 }
 
-// Largest size that fits at a given centre.
+// Distance from the base to the drawing's outline (its convex hull, filled) at size s; 0 if it covers the base.
+function hullDist0(P, cx, cy, s) {
+  const H = P.hull, n = H.length;
+  if (!n) return Infinity;
+  let best = Infinity, sign = 0, inside = n >= 3;
+  for (let i = 0; i < n; i++) {
+    const a = H[i], b = H[(i + 1) % n];
+    const ax = cx + s * a.x, ay = cy + s * a.y, bx = cx + s * b.x, by = cy + s * b.y;
+    const d = n === 1 ? ax * ax + ay * ay : segDist0Sq(ax, ay, bx, by);
+    if (d < best) best = d;
+    const cr = ax * by - ay * bx;
+    if (cr !== 0) { const sg = cr > 0 ? 1 : -1; if (!sign) sign = sg; else if (sg !== sign) inside = false; }
+  }
+  return inside ? 0 : Math.sqrt(best);
+}
+
+// Largest size that fits at a given centre — and at every smaller size too. A drawing with a gap can
+// fit large with the area round the base sitting inside the gap, yet not fit a little smaller, when
+// one of its lines crosses that area; so the base area is kept outside the drawing's outline, which
+// (unlike the lines alone) only ever gets closer to the base as the drawing grows.
 function maxSizeAt(P, cx, cy, z, pad = 0) {
   const ub = Math.min(hullSizeBound(P, cx, cy, z, pad), 2000);
   if (!(ub > 0)) return 0;
-  if (innerClear(P, cx, cy, ub, z, pad)) return ub;
   if (!innerClear(P, cx, cy, 0, z, pad)) return 0;
-  let lo = 0, hi = ub;
+  let s = ub;
+  if (!innerClear(P, cx, cy, ub, z, pad)) {
+    let lo = 0, hi = ub;
+    for (let it = 0; it < 30 && hi - lo > 0.02; it++) {
+      const m = (lo + hi) / 2;
+      if (innerClear(P, cx, cy, m, z, pad)) lo = m; else hi = m;
+    }
+    s = lo;
+  }
+  const R = t => z.rIn + P.eps * t + pad;
+  if (hullDist0(P, cx, cy, s) >= R(s)) return s;
+  let lo = 0, hi = s;
   for (let it = 0; it < 30 && hi - lo > 0.02; it++) {
     const m = (lo + hi) / 2;
-    if (innerClear(P, cx, cy, m, z, pad)) lo = m; else hi = m;
+    if (hullDist0(P, cx, cy, m) >= R(m) && innerClear(P, cx, cy, m, z, pad)) lo = m; else hi = m;
   }
   return lo;
 }

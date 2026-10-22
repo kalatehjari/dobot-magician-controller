@@ -2,7 +2,8 @@
 // Safe values until auto-calibration: a band every Magician tool reaches, kept well above the table.
 const DEFAULTS = {
   limits: { minR: 200, maxR: 295, thMin: -85, thMax: 85, zMin: 0, zMax: 110, zUp: 30, zDown: 15, homeX: 240, homeY: 0, homeZ: 60, penSet: false },
-  speed: { live: 120, accel: 120, draw: 35, travel: 100, smart: 160 },
+  speed: { ...MOTION_PROFILES.quiet.speeds },
+  motion: { profile: 'quiet', follow: 'glide' },
 };
 const SETTINGS_VERSION = 3;
 const S = {
@@ -11,11 +12,12 @@ const S = {
   cmd: null,                         // last commanded target
   limits: structuredClone(DEFAULTS.limits),
   speed: structuredClone(DEFAULTS.speed),
+  motion: structuredClone(DEFAULTS.motion),
   live: false, dragging: false, target: null, lastKey: '', sending: false,
   polling: false, nudgeBusy: false, alarm: [], calib: false, tick: 0,
   rec: { active: false, pts: [] },
   takes: [], learned: null,
-  plot: { strokes: null, ops: null, start: null, stats: null, sketch: null, place: null, placeVer: 0, opsVer: -1, placeOk: true },
+  plot: { objects: [], sel: null, strokes: null, ops: null, start: null, stats: null, placeVer: 0, opsVer: -1, drawnIds: [] },
   paper: { jobs: [] },               // what has been drawn on the current sheet (shown in red)
   lastPoll: 0,
   model: null,                       // geometry calibration {dR, dZ, ok, maxDev} — see part 31
@@ -77,7 +79,7 @@ function readSetup() {
 }
 
 function saveSettings() {
-  try { localStorage.setItem('magician-settings', JSON.stringify({ v: SETTINGS_VERSION, limits: S.limits, speed: S.speed, model: S.model })); } catch (e) {}
+  try { localStorage.setItem('magician-settings', JSON.stringify({ v: SETTINGS_VERSION, limits: S.limits, speed: S.speed, model: S.model, motion: S.motion })); } catch (e) {}
 }
 
 function writeSetup() {
@@ -97,6 +99,8 @@ function loadSetup() {
       S.limits = { ...DEFAULTS.limits, ...saved.limits };
       S.speed = { ...DEFAULTS.speed, ...saved.speed };
       S.model = saved.model || null;
+      if (saved.motion) S.motion = { ...DEFAULTS.motion, ...saved.motion };
+      else { S.speed = { ...S.speed, ...MOTION_PROFILES.quiet.speeds }; S.motionMigrated = true; }   // first start after the update
     } else if (saved) {
       // Older versions allowed 100–320 mm, which the arm cannot reach at table height. Keep speeds only.
       S.speed = { ...DEFAULTS.speed, ...saved.speed, draw: DEFAULTS.speed.draw };
@@ -272,8 +276,14 @@ function setLiveButton() {
 }
 
 // Live follow: streams the latest cursor target at a steady rate, never more than 2 moves queued.
+// With "Glide" following the target goes to the smoothed continuous-path follower instead.
 setInterval(async () => {
   if (!S.dev || !S.live || !S.target || S.sending || S.running || S.alarm.length) return;
+  if (typeof followGlide === 'function' && followGlide()) {
+    const t = clampTarget(S.target.x, S.target.y, S.target.z);
+    if (!GL.target || Math.hypot(t.x - GL.target.x, t.y - GL.target.y, t.z - GL.target.z) > 0.3 || GL.owner !== 'mouse') glideSet('mouse', t);
+    return;
+  }
   const key = S.target.x.toFixed(1) + ',' + S.target.y.toFixed(1) + ',' + S.target.z.toFixed(1);
   if (key === S.lastKey) return;
   S.sending = true;
@@ -320,6 +330,7 @@ mouseCv.addEventListener('wheel', async ev => {
 document.getElementById('btnLive').onclick = () => {
   if (!S.dev) { log('Connect or start the simulator first.', 'warn'); return; }
   S.live = !S.live; S.target = null; S.lastKey = ''; setLiveButton();
+  if (!S.live && typeof glideRelease === 'function') glideRelease('mouse');
   S.dev.setSpeed(S.speed.live, S.speed.accel).catch(() => {});
 };
 

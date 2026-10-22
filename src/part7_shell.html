@@ -32,6 +32,8 @@ button:hover{border-color:var(--accent)}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 button.ghost{color:var(--muted)}
+button:disabled,select:disabled,input:disabled{opacity:.5;cursor:default}
+button:disabled:hover{border-color:var(--line)}
 button.estop{background:var(--danger);border-color:var(--danger);color:#fff;font-weight:700;padding:8px 16px;letter-spacing:.3px}
 nav{display:flex;gap:4px;padding:8px 16px 0;border-bottom:1px solid var(--line);background:var(--panel);overflow-x:auto}
 nav button{border:none;border-bottom:2px solid transparent;border-radius:0;background:none;padding:8px 12px;color:var(--muted)}
@@ -74,7 +76,7 @@ textarea{width:100%;min-height:70px;font-family:ui-monospace,Menlo,monospace;fon
 .sum{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0}
 .sum td{padding:5px 4px;border-bottom:1px solid var(--line)} .sum td:first-child{color:var(--muted);width:40%}
 
-/* ---- calibration dialog, tracing ---- */
+/* ---- v3 ---- */
 label.f>span b{font-weight:600;color:var(--ink)}
 .ver{font-size:11px;font-weight:600;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:1px 5px;vertical-align:middle}
 .spinner{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin:10px 0}
@@ -104,7 +106,7 @@ input[type=range]{max-width:100%}
 .mbar>div{height:100%;background:var(--accent);transition:width .1s}
 canvas.eyes{width:100%;height:190px;display:block;border-radius:10px;border:1px solid var(--line);background:var(--panel)}
 #smartActivity{font-size:12px}
-/* ---- placement & live pen ---- */
+/* ---- v4: placement & live pen ---- */
 :root{--zone:rgba(22,163,74,.13);--zoneLine:#16a34a;--laser:#e11d1d}
 :root[data-theme="dark"]{--zone:rgba(74,222,128,.12);--zoneLine:#4ade80;--laser:#ff5a5a}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--zone:rgba(74,222,128,.12);--zoneLine:#4ade80;--laser:#ff5a5a}}
@@ -114,9 +116,58 @@ canvas.eyes{width:100%;height:190px;display:block;border-radius:10px;border:1px 
 .unit{font-size:12px;color:var(--muted)}
 label.f.grow{flex:1 1 260px}
 canvas.world.plot{height:560px;margin-top:6px;cursor:default}
+canvas.small.qt{height:220px;margin-top:6px}
 canvas.world.plot:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .zone-key{color:var(--zoneLine)} .laser-key{color:var(--laser)}
+/* ---- shading ---- */
+.sh-quicks{margin:2px 0 6px}
+.sh-quick{font-size:12px;padding:3px 10px;border-radius:99px}
+.sh-quick[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+/* ---- objects and text ---- */
+.obj-bar{justify-content:space-between;margin-bottom:4px}
+.obj-tools{display:flex;flex-wrap:wrap;gap:6px}
+.obj-list{display:flex;flex-wrap:wrap;gap:6px;max-height:112px;overflow:auto;margin:2px 0 4px}
+.obj-list:empty{display:none}
+.obj-item{display:flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:99px;padding:0 4px 0 7px;background:var(--bg);max-width:100%}
+.obj-item.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.obj-item.off .obj-name{opacity:.55;text-decoration:line-through}
+.obj-item.bad .obj-name{color:var(--err)}
+.obj-item input{margin:0}
+.obj-name{border:none;background:none;padding:4px 6px;display:flex;gap:6px;align-items:center;font-size:12.5px;min-width:0;max-width:260px}
+.obj-name span:nth-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.obj-kind{font-size:11px;color:var(--muted);font-weight:600}
+.obj-meta{font-size:11px;color:var(--muted);white-space:nowrap}
+.obj-item.sel .obj-name{color:var(--accent)}
+.tx-mode{font-weight:400;font-size:12px;margin-left:6px}
+#textCard.editing{border-color:var(--accent)}
+textarea.tx-text{font:15px/1.4 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;min-height:52px;resize:vertical}
+.tx-fonts{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:6px;margin:8px 0 2px}
+.tx-font{height:40px;padding:4px 8px;border-radius:9px;background:var(--bg);color:var(--ink);display:flex;align-items:center;justify-content:center}
+.tx-font svg{width:100%;height:100%;display:block}
+.tx-font svg path{fill:none;stroke:currentColor;stroke-width:1.2;vector-effect:non-scaling-stroke;stroke-linecap:round;stroke-linejoin:round}
+.tx-font[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;color:var(--accent)}
+.tx-credit-body{font-size:12px;color:var(--muted)}
+.tx-credit-body p{margin:8px 0 4px}
+pre.tx-lic{white-space:pre-wrap;font:11px/1.4 ui-monospace,Menlo,monospace;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;max-height:160px;overflow:auto;margin:4px 0}
+/* ---- drawing library ---- */
+.libcats{margin:4px 0 8px}
+.libcat{font-size:12px;padding:3px 10px;border-radius:99px}
+.libcat[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;max-height:430px;overflow:auto;padding:2px}
+.lib-item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 4px;border-radius:10px;background:var(--bg);color:var(--ink);min-width:0}
+.lib-item svg{width:100%;aspect-ratio:1;display:block}
+.lib-item svg path{fill:none;stroke:currentColor;stroke-width:1.1;vector-effect:non-scaling-stroke;stroke-linecap:round;stroke-linejoin:round}
+.lib-item span{font-size:12px;line-height:1.2;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-item.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;color:var(--accent)}
+.lib-credit-list{font-size:12px;color:var(--muted);margin:6px 0 0;padding-left:18px;columns:2 260px}
+.lib-credit-body{font-size:12px;color:var(--muted)}
+.lib-credit-body h4{font-size:12.5px;color:var(--ink);margin:12px 0 4px}
+.lib-credit-body p{margin:4px 0}
+.lib-catlabel select{min-width:220px}
 @media (max-width:640px){
+  .lib-grid{grid-template-columns:repeat(auto-fill,minmax(78px,1fr));max-height:300px}
+  .tx-fonts{grid-template-columns:repeat(auto-fill,minmax(92px,1fr))}
+  .obj-name{max-width:200px}
   canvas.world.plot{height:360px}
   main{padding:12px}
   canvas.world{height:340px}
@@ -127,7 +178,7 @@ canvas.world.plot:focus-visible{outline:2px solid var(--accent);outline-offset:2
 </head>
 <body>
 <header>
-  <h1>Magician Smart Controller <span class="ver">v1.0.0</span></h1>
+  <h1>Magician Smart Controller <span class="ver">v1.4.0</span></h1>
   <span id="pill" class="pill">Not connected</span>
   <button id="btnConnect" class="primary">Connect USB</button>
   <button id="btnSim">Simulator</button>
@@ -185,6 +236,20 @@ canvas.world.plot:focus-visible{outline:2px solid var(--accent);outline-offset:2
     </details>
   </div>
 
+  <div id="libCard" class="card">
+    <h3>Drawing library</h3>
+    <div class="row">
+      <label class="f lib-catlabel">Category<select id="lib-cat" aria-label="Category"></select></label>
+      <input id="lib-search" type="search" placeholder="Search: cat, boat, Paris, Leo…" aria-label="Search the drawing library" style="flex:1 1 200px;max-width:320px;align-self:flex-end">
+      <span id="lib-count" class="muted" style="align-self:flex-end;padding-bottom:6px"></span>
+      <button id="btnLibSave" class="ghost" disabled title="Save the chosen drawing as an SVG file" style="align-self:flex-end">Download SVG</button>
+    </div>
+    <div id="lib-grid" class="lib-grid" aria-label="Drawings"></div>
+    <div id="lib-none" class="muted" hidden style="padding:10px 2px">No drawing matches — try another word or category.</div>
+    <div class="hint">Ready-made single-line drawings for the pen. Choose a category or search, then click a drawing to add it to the paper — size, turn and place it below. Point at a drawing to see who made it. Sources: <b>Openclipart</b> (public domain), <b>Tabler Icons</b> (MIT), <b>d3-celestial</b> star data (BSD), <b>flag-icons</b> (MIT), <b>Hershey</b> lettering and drawings made for this library. Flags keep their colours in the grid and in downloads; the pen draws their outlines.</div>
+    <details id="lib-credits" style="margin-top:6px"><summary class="muted">Credits and licences</summary><div class="lib-credit-body"></div></details>
+  </div>
+
   <div id="traceCard" class="card" hidden>
     <h3>Picture to lines</h3>
     <canvas id="traceCanvas" class="small"></canvas>
@@ -228,9 +293,92 @@ canvas.world.plot:focus-visible{outline:2px solid var(--accent);outline-offset:2
       <button id="btnPlLargest" title="As big as the green zone allows at this rotation">Largest</button>
       <label class="f">Safety margin (mm)<input id="plot-margin" type="number" value="6" step="1" min="0" max="30"></label>
     </div>
-    <canvas id="plotCanvas" class="world plot" tabindex="0" aria-label="Paper map. Drag the drawing to move it."></canvas>
+    <div class="row obj-bar">
+      <span id="obj-count" class="muted"></span>
+      <span class="obj-tools">
+        <button id="btnObjDup" title="Copy the selected object (D)">Duplicate</button>
+        <button id="btnObjDel" title="Remove the selected object (Delete)">Delete</button>
+        <button id="btnObjOnly" class="ghost" title="Untick every other object, so only the selected one is drawn">Draw only this</button>
+        <button id="btnObjUndo" class="ghost" hidden title="Put back what was removed last (Ctrl+Z / ⌘Z)">Undo remove</button>
+        <button id="btnObjClear" class="ghost">Remove all</button>
+      </span>
+    </div>
+    <div id="obj-list" class="obj-list" aria-label="Objects on the paper"></div>
+    <canvas id="plotCanvas" class="world plot" tabindex="0" aria-label="Paper map. Click a drawing or text to select it, drag to move it."></canvas>
     <div id="pl-info" class="stats"></div>
-    <div class="hint"><b class="zone-key">Green</b> = where the pen can draw (from Auto-calibrate). Drag the drawing to move it, a corner square to resize it, the round knob to turn it — every line stays inside the green zone (the dashed box is only the handle and may stick out). With the map selected: arrow keys move it 1 mm (Shift: 10 mm), + and − resize, [ and ] turn. <b class="laser-key">Red dot</b> = the pen, live; <b class="laser-key">red lines</b> = what has been drawn on this sheet. Dotted grey = pen-up travel.</div>
+    <div class="hint"><b class="zone-key">Green</b> = where the pen can draw (from Auto-calibrate). Everything you load, pick from the library or type is added to the paper as its own object. <b>Click</b> one to select it, then drag it to move it, drag a corner square to resize it or the round knob to turn it — the size, rotation and shading controls act on the selected object. Every line stays inside the green zone (the dashed box is only the handle and may stick out). Untick an object in the list to leave it out of the drawing. With the map selected: arrow keys move it 1 mm (Shift: 10 mm), + and − resize, [ and ] turn, D copies it, Delete removes it. <b class="laser-key">Red dot</b> = the pen, live; <b class="laser-key">red lines</b> = what has been drawn on this sheet. Dotted grey = pen-up travel.</div>
+  </div>
+
+  <div id="textCard" class="card">
+    <h3>Text <span id="tx-mode" class="muted tx-mode"></span></h3>
+    <textarea id="tx-text" class="tx-text" rows="2" spellcheck="true" aria-label="Text to draw" placeholder="Type the text to draw…"></textarea>
+    <div id="tx-fonts" class="tx-fonts" role="group" aria-label="Font"></div>
+    <div class="row">
+      <label class="f">Style<select id="tx-style"></select></label>
+      <label class="f">Letter height (mm)<input id="tx-height" type="number" min="1" max="200" step="0.5" value="10"></label>
+      <label class="f">Rotation (°)<input id="tx-rot" type="number" min="-180" max="180" step="1" value="0"></label>
+      <label class="f">Alignment
+        <select id="tx-align"><option value="left">Left</option><option value="center" selected>Centre</option><option value="right">Right</option></select></label>
+      <label class="f">Letter spacing (%)<input id="tx-spacing" type="number" min="-30" max="200" step="5" value="0"></label>
+      <label class="f">Line spacing<input id="tx-lines" type="number" min="0.5" max="4" step="0.1" value="1"></label>
+    </div>
+    <div class="row">
+      <button id="btnTextAdd" class="primary">Add text</button>
+      <span id="tx-info" class="muted"></span>
+    </div>
+    <div class="hint">Single-line fonts: every letter is drawn with one pen line, as if written, so text plots quickly and cleanly. Letter height is the height of a capital letter. Several lines are fine — press Return in the text box. Accented letters missing from a font (ā, ł, ő…) are drawn with the accent added.</div>
+    <details id="tx-credits" style="margin-top:6px"><summary class="muted">Fonts and licences</summary><div id="tx-credit-body" class="tx-credit-body"></div></details>
+  </div>
+
+  <div id="shadeCard" class="card">
+    <h3>Shading <span id="sh-for" class="muted tx-mode"></span></h3>
+    <div class="row">
+      <label class="f">Pattern
+        <select id="sh-pattern">
+          <option value="off">Off — outlines only</option>
+          <option value="lines">Lines</option>
+          <option value="cross">Cross-hatch (2 directions)</option>
+          <option value="tri">Three directions</option>
+        </select></label>
+      <label class="f grow"><span>Angle <b id="sh-angleVal"></b></span>
+        <span class="pair"><input id="sh-angle" type="range" min="0" max="179" step="1" value="45" aria-label="Line angle"><input id="sh-angleNum" type="number" min="0" max="180" step="1" value="45" aria-label="Line angle in degrees"><span class="unit">°</span></span></label>
+      <label class="f">Line spacing (mm)<input id="sh-spacing" type="number" min="0.3" max="30" step="0.1" value="2"></label>
+    </div>
+    <div class="row sh-quicks" role="group" aria-label="Quick angles">
+      <span class="muted" style="font-size:12px">Quick angle</span>
+      <button class="ghost sh-quick" data-a="0" title="Across">0°</button>
+      <button class="ghost sh-quick" data-a="45" title="Rising to the right">45°</button>
+      <button class="ghost sh-quick" data-a="90" title="Up and down">90°</button>
+      <button class="ghost sh-quick" data-a="135" title="Falling to the right">135°</button>
+    </div>
+    <div class="row">
+      <label class="f">Angle per shape
+        <select id="sh-vary">
+          <option value="same">Same for every shape</option>
+          <option value="alt">Alternate (+90°)</option>
+          <option value="step30">Turn 30° each shape</option>
+          <option value="step45">Turn 45° each shape</option>
+          <option value="step60">Turn 60° each shape</option>
+          <option value="random">Random</option>
+        </select></label>
+      <button id="btnShadeRandom" class="ghost" title="New random angles">Shuffle</button>
+      <label class="f">Shapes to shade
+        <select id="sh-which">
+          <option value="all">Every closed shape</option>
+          <option value="alt">Every other level (holes stay empty)</option>
+          <option value="filled">Filled shapes in the SVG</option>
+        </select></label>
+      <label class="small-label"><input id="sh-tone" type="checkbox"> Darker colours get closer lines</label>
+    </div>
+    <div class="row">
+      <label class="small-label"><input id="sh-outline" type="checkbox" checked> Draw outlines</label>
+      <label class="small-label"><input id="sh-join" type="checkbox" checked> Join lines into zig-zags</label>
+      <label class="f">Gap from outline (mm)<input id="sh-inset" type="number" min="0" max="5" step="0.1" value="0"></label>
+      <button id="btnShadeReset" class="ghost" disabled>Reset shape choices</button>
+      <button id="btnShadeSvg" class="ghost" disabled>Download SVG with shading</button>
+    </div>
+    <div id="sh-stats" class="stats"></div>
+    <div class="hint">Fills closed shapes with parallel pen lines. Angles belong to the drawing (0° = across, 90° = up and down) and turn with it; spacing is in millimetres on the paper at any size. A shape inside another is a hole in it, so each region is shaded on its own. <b>Click a shape on the map</b> to give it its own shading: each click turns its lines another 45°, then cross-hatches it, then leaves it empty, then returns it to the settings above. <b>Filled shapes in the SVG</b> follows the file's colours: shapes on top hide the ones below and white stays white. Zig-zags follow the outline between lines, so the pen lifts far less.</div>
   </div>
 
   <div class="card">
@@ -241,6 +389,12 @@ canvas.world.plot:focus-visible{outline:2px solid var(--accent);outline-offset:2
           <option value="smooth">Smooth — continuous lines (recommended)</option>
           <option value="precise">Precise — stop at every point</option>
         </select></label>
+      <label class="f">Feel
+        <select id="plot-feel">
+          <option value="quiet">Quiet &amp; smooth</option>
+          <option value="balanced">Balanced</option>
+          <option value="fast">Fast</option>
+        </select></label>
       <label class="f">Pen speed (mm/s)<input id="plot-speed" type="number" min="5" max="300" step="5"></label>
       <label class="f">Travel speed, pen up (mm/s)<input id="plot-travel" type="number" min="5" max="300" step="5"></label>
     </div>
@@ -248,11 +402,18 @@ canvas.world.plot:focus-visible{outline:2px solid var(--accent);outline-offset:2
       <button id="btnDraw" class="primary">Draw</button>
       <button id="btnPause" disabled>Pause</button>
       <button id="btnTestSquare">Test square (20 mm)</button>
+      <span class="pair"><button id="btnHoverRound" title="The pen goes once round everything that will be drawn, just above the paper, so you can check the paper is in the right place">Hover round</button>
+        <select id="plot-frame" aria-label="Shape of the hover round"><option value="box">box</option><option value="outline">outline</option></select></span>
       <button id="btnBuild">Rebuild path</button>
       <button id="btnExportOps" class="ghost">Export path (JSON)</button>
+      <button id="btnLayoutSave" class="ghost" title="Everything on the paper (drawings, text, places, shading) as a file you can open again">Save layout</button>
+      <button id="btnLayoutOpen" class="ghost" title="Open a saved layout: its objects are added to the paper">Open layout…</button>
+      <input id="layout-file" type="file" accept=".json,application/json" hidden>
+      <button id="btnLayoutSvg" class="ghost" title="Everything on the paper as one SVG file, in millimetres">Layout SVG</button>
       <button id="btnNewSheet" class="ghost" title="Clear the red lines after putting in a fresh sheet of paper">New sheet</button>
     </div>
     <div id="plot-stats" class="stats">Load a drawing or a picture to start.</div>
+    <div class="hint"><b>Hover round</b> checks the paper before drawing: the pen goes once round the outside of everything that will be drawn, about 5 mm above the paper, without touching it — <b>box</b> goes round the corners of a rectangle that holds it all, <b>outline</b> follows the outside of the lines. Its path shows dashed on the map.</div>
     <div class="bar"><div id="plot-bar"></div></div>
     <details style="margin-top:10px"><summary class="muted">Advanced</summary>
       <div class="row">
@@ -260,9 +421,11 @@ canvas.world.plot:focus-visible{outline:2px solid var(--accent);outline-offset:2
         <label class="f">Drop strokes shorter than (mm)<input id="plot-minlen" type="number" value="1" step="0.5" min="0"></label>
         <label class="f">Join gap, no pen lift (mm)<input id="plot-join" type="number" value="0.5" step="0.1" min="0"></label>
         <label class="f">Ordering time budget (ms)<input id="plot-opt" type="number" value="1500" step="250" min="0"></label>
-        <label class="f">Smooth-mode acceleration (mm/s²)<input id="plot-cpacc" type="number" value="150" step="10" min="20" max="400"></label>
+        <label class="f">Smooth-mode acceleration (mm/s²)<input id="plot-cpacc" type="number" value="70" step="10" min="20" max="400"></label>
+        <label class="f">Lowest pen hop (mm)<input id="plot-hopmin" type="number" value="3" step="0.5" min="1" max="15"></label>
+        <label class="f">Longest hop without a full lift (mm)<input id="plot-hopmax" type="number" value="40" step="5" min="0" max="80"></label>
       </div>
-      <div class="hint">Smooth mode sends the pen path as continuous-path (CP) moves, which the Magician blends without stopping, at the pen speed. Pen-up travel is a straight move at the travel speed, so the pen keeps its height. If lines look wobbly, lower the pen speed or the acceleration.</div>
+      <div class="hint">Smooth mode sends the whole drawing as one continuous path (CP moves), which the Magician blends without stopping: lines are cut into short even pieces, and the pen hops between nearby strokes on low rounded arcs (higher for longer hops, never lower than "Lowest pen hop"). Only jumps longer than the hop limit lift fully and travel at the travel speed. If lines look wobbly, lower the pen speed or the acceleration; if the pen catches the paper between strokes, raise the lowest hop.</div>
     </details>
   </div>
 
@@ -494,6 +657,34 @@ canvas.world.plot:focus-visible{outline:2px solid var(--accent);outline-offset:2
     </div>
     <div id="modelStatus" class="stats">Not calibrated yet.</div>
     <div class="hint">Auto-calibrate homes the arm, checks its joint readings against the Magician's geometry (rear arm 135 mm, forearm 147 mm, joint limits) and computes where it can reach at every height; you only lower the pen onto the paper. Manual calibration jogs the arm to its ends instead. With auto-calibration, every move is checked against the real reach at its height; min/max reach here set the area the smart modes use.</div>
+  </div>
+
+  <div class="card">
+    <h3>Smooth &amp; quiet motion</h3>
+    <div class="row">
+      <label class="f">Motion feel
+        <select id="mo-profile">
+          <option value="quiet">Quiet &amp; smooth</option>
+          <option value="balanced">Balanced</option>
+          <option value="fast">Fast</option>
+        </select></label>
+      <label class="f">Following (mouse, hand, face)
+        <select id="mo-follow">
+          <option value="glide">Glide — one continuous motion</option>
+          <option value="steps">Steps — point to point</option>
+        </select></label>
+    </div>
+    <div class="hint">Stepper motors are loudest when they speed up or stop hard, start and stop over and over, or run at a speed where they resonate. <b>Quiet &amp; smooth</b> uses gentle acceleration and lower speeds; drawings run as one continuous path with low, rounded pen hops instead of stopping at every lift; and following glides along a smoothed path instead of jumping from point to point. Choosing a feel sets the speeds below, which you can still fine-tune. If gliding ever feels laggy or odd on your arm, switch Following to Steps.</div>
+    <div class="row">
+      <button id="btnQuietTest">Find the quietest speeds…</button>
+      <span id="qtStatus" class="muted">Moves the arm back and forth in the air at different speeds and listens with your microphone.</span>
+    </div>
+    <canvas id="qtCanvas" class="small qt" hidden></canvas>
+    <div id="qtHover" class="stats" hidden></div>
+    <div class="row" id="qtApply" hidden>
+      <button id="btnQtUse" class="primary">Use these speeds</button>
+      <span id="qtPick" class="muted"></span>
+    </div>
   </div>
 
   <div class="card">
