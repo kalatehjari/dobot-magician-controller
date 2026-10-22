@@ -1,5 +1,5 @@
-// Free placement (size, any rotation, mirror, position) inside the green zone, travel routing
-// around the base, pen-progress projection (run: node tests/unit/test_placement.js)
+// Unit tests: free placement (size, any rotation, mirror, position) inside the green zone,
+// travel routing around the base, pen-progress projection (run: node tests/unit/test_placement.js)
 const fs = require('fs'), vm = require('vm');
 const ctx = { console, Math, Float32Array, Float64Array, Int32Array, Uint8Array, Uint8ClampedArray, Array, Object, Number, JSON, Infinity, NaN, isFinite, Set, Map, Promise, DataView, setTimeout, Date };
 ctx.S = { limits: { minR: 170, maxR: 300, thMin: -87, thMax: 87, zMin: -80, zMax: 120, zUp: -60, zDown: -75 }, speed: { live: 100, accel: 100 }, gen: 0, model: null };
@@ -47,7 +47,7 @@ function placed(sk, pl) { const f = placeXform(pl); return sk.strokes.map(s => s
     let dm = 0; am.forEach((s, i) => s.forEach((p, j) => { dm = Math.max(dm, Math.hypot(p.x - bm[i][j].x, p.y - bm[i][j].y)); }));
     return { d0, d90, dm };
   })()`);
-  t('placement at 0° matches the fixed-box mapping (sketch up = away from the base)', r.d0 < 1e-9, r.d0.toExponential(1));
+  t('placement at 0° matches the v3 mapping (sketch up = away from the base)', r.d0 < 1e-9, r.d0.toExponential(1));
   t('90° is a clockwise quarter turn, as before', r.d90 < 1e-9, r.d90.toExponential(1));
   t('mirror flips left↔right, as before', r.dm < 1e-9, r.dm.toExponential(1));
   const inv = E(`(() => { const sk = prepareSketch(blob()); let worst = 0;
@@ -95,7 +95,7 @@ function placed(sk, pl) { const f = placeXform(pl); return sk.strokes.map(s => s
   const r = E(`(() => { const sk = prepareSketch(rectStrokes(150, 100)), P = placementProbe(sk, 0, false);
     const b = bestPlacement(P, ZONE, { centreLine: true }), f = fitRectForAspect(ZONE.rIn, ZONE.rOut, 0, 1.5, ZONE.thMax);
     return { b, f }; })()`);
-  t('largest landscape drawing on the centre line = the largest fitted box', Math.abs(r.b.size - r.f.h) / r.f.h < 0.006 && Math.abs(r.b.cx - r.f.cx) < 1.5 && Math.abs(r.b.cy) < 1e-9,
+  t('largest landscape drawing on the centre line = v3’s largest box', Math.abs(r.b.size - r.f.h) / r.f.h < 0.006 && Math.abs(r.b.cx - r.f.cx) < 1.5 && Math.abs(r.b.cy) < 1e-9,
     `${r.b.size.toFixed(1)} vs ${r.f.h.toFixed(1)} mm, centre ${r.b.cx.toFixed(1)} vs ${r.f.cx.toFixed(1)}`);
   const tall = E(`(() => { const sk = prepareSketch(rectStrokes(40, 200)), P = placementProbe(sk, 0, false);
     return { line: bestPlacement(P, ZONE, { centreLine: true }), any: bestPlacement(P, ZONE) }; })()`);
@@ -106,6 +106,19 @@ function placed(sk, pl) { const f = placeXform(pl); return sk.strokes.map(s => s
       out.push(exactInZone(placed(sk, { ...b, angle, mirror: false }), ZONE).ok); }
     return out; })()`);
   t('largest placements at several rotations are inside the zone', exact.every(Boolean), JSON.stringify(exact));
+}
+
+/* ---------- a drawing with a gap facing the base ---------- */
+{
+  // a wide Π open towards the base: at its largest the area round the base sits between the legs without
+  // touching a line, but smaller a leg crosses it — the largest size must hold at every smaller size too
+  const r = E(`(() => { const sk = prepareSketch([[{ x: 0, y: 150 }, { x: 0, y: 0 }, { x: 300, y: 0 }, { x: 300, y: 150 }]]);
+    const P = placementProbe(sk, 0, false), b = bestPlacement(P, ZONE, { centreLine: true }), out = [];
+    for (const k of [0.3, 0.5, 0.7, 0.8, 0.9, 1]) out.push(probeFits(P, b.cx, b.cy, b.size * k, ZONE));
+    const f = fixPlacement(sk, { cx: b.cx, cy: b.cy, size: b.size * 0.75, angle: 0, mirror: false }, ZONE);
+    return { size: b.size, out, f }; })()`);
+  t('largest size for a drawing with a gap also fits at every smaller size (was not so at 70–80 %)', r.out.every(Boolean), `${r.size.toFixed(0)} mm: ${JSON.stringify(r.out)}`);
+  t('…so a smaller size at the same spot is accepted as it is', r.f && !r.f.fixed);
 }
 
 /* ---------- fixing and dragging ---------- */

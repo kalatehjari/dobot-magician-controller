@@ -1,7 +1,7 @@
 // Runs every unit test file and summarises (run: node tests/unit/run_all.js, or npm test)
 const { spawnSync } = require('child_process'), path = require('path');
 let bad = 0;
-for (const f of ['test_protocol.js', 'test_smart.js', 'test_drawing.js', 'test_placement.js']) {
+for (const f of ['test_protocol.js', 'test_smart.js', 'test_drawing.js', 'test_placement.js', 'test_smooth.js', 'test_library.js', 'test_shade.js', 'test_text.js']) {
   const r = spawnSync(process.execPath, [path.join(__dirname, f)], { encoding: 'utf8' });
   const out = (r.stdout || '') + (r.stderr || '');
   const pass = (out.match(/^PASS /gm) || []).length, fail = (out.match(/^FAIL /gm) || []).length;

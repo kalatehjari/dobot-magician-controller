@@ -1,4 +1,4 @@
-// Kinematics/auto-calibration, image tracing, drawing commands, protocol (run: node tests/unit/test_drawing.js)
+// Unit tests: kinematics/auto-calibration, image tracing, drawing commands, protocol (run: node tests/unit/test_drawing.js)
 const fs = require('fs'), vm = require('vm');
 const ctx = { console, Math, Float32Array, Float64Array, Int32Array, Uint8Array, Uint8ClampedArray, Array, Object, Number, JSON, Infinity, NaN, isFinite, Set, Map, Promise, DataView, setTimeout };
 ctx.S = { limits: { minR: 170, maxR: 300, thMin: -87, thMax: 87, zMin: -80, zMax: 120, zUp: -60, zDown: -75 }, speed: { live: 100, accel: 100 }, gen: 0, model: null };
