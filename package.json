@@ -1,6 +1,6 @@
 {
   "name": "dobot-magician-controller",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Control a Dobot Magician robot arm from Chrome or Edge over USB (Web Serial): plotter with a 2 245-drawing library, text, shading and several objects per sheet, 3D printing (STL slicer and USB printing for the Dobot 3D-printing kit), mouse control, record & learn, dance, imitation and face reactions.",
   "private": true,
   "license": "MIT",

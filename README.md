@@ -1,6 +1,6 @@
 # Dobot Magician Controller
 
-Control a **Dobot Magician** robot arm straight from your browser over USB — no Dobot software needed. Open one HTML file in Chrome or Edge, plug the arm in, and draw, write, 3D print, move, record, dance and react.
+Control a **Dobot Magician** robot arm straight from your browser over USB, or wirelessly with Dobot's Bluetooth and Wi-Fi modules — no Dobot software needed. Open one HTML file in Chrome or Edge, connect the arm, and draw, write (in English or Persian), 3D print, move, record, dance and react.
 
 **Use it online:** [open the app](https://kalatehjari.github.io/dobot-magician-controller/app/) · [website](https://kalatehjari.github.io/dobot-magician-controller/) — nothing to download. Or get the single HTML file from the [latest release](../../releases/latest).
 
@@ -11,10 +11,14 @@ Control a **Dobot Magician** robot arm straight from your browser over USB — n
 - **Plotter**
   - Draws **SVG** files, or turns **pictures** (PNG, JPG, WEBP, GIF, BMP) into lines: outlines for shapes, single centre lines for line art and text, or edges for photos. Threshold, detail and curve smoothing are adjustable, and the lines can be downloaded as SVG.
   - **Free placement:** set the size in millimetres, turn the drawing to any angle, mirror it, and drag, resize or rotate it on the map. The **green zone** shows where the pen can reach at drawing height, and every line is kept inside it.
+  - **Safe drawing zone:** click the corners of your paper on the map (or choose a paper size). Nothing the pen does goes outside it — drawing lines and pen-up travel alike, which goes round inside it — except centring and calibration.
+  - **Paper height:** re-set the pen height for a new sheet or a thicker board by touching the paper with the pen, and save heights by name to switch between them.
+  - **Clear plotter and Redraw:** clear the paper and the red lines in one click, or redraw what has been drawn — for duplicates or several copies, waiting for a fresh sheet between them.
   - **Optimised path:** strokes are ordered to cut pen-up travel (nearest neighbour + 2-opt), joined where they touch and simplified. Pen-up hops that would cross the unreachable area near the base go around it.
   - **Drawing library:** 2 245 ready-made single-line drawings in 31 categories — animals, cars and sports cars, male and female poses, faces, flags (in colour), city skylines, songs as sheet music, constellations, zodiac, leaves, topography, aircraft, army, ants, sci-fi, clothing, shoes, signs, emojis, objects, technology, phones and electronics, music, art and more. Choose a category or search, click a drawing to add it to the paper, or download it as SVG. The same drawings come as a folder of SVG files with the release.
   - **Several objects on one sheet:** drawings, pictures and text each keep their own size, place, turn and shading. Copy, delete, choose which ones to draw, save and open layouts, and export the whole sheet as one SVG.
   - **Text:** 13 single-line fonts (Hershey and EMS) in up to four styles; letter height in millimetres, rotation, alignment, spacing, several lines and accented letters.
+  - **Persian text:** switch Persian on to write right to left in a single-line Persian font: letters join and take their shapes by themselves, the half-space works, vowel marks sit on their letters, English words and numbers inside stay left to right, and 0–9 can be drawn as Persian digits.
   - **Shading:** hatch lines inside closed shapes — lines, cross-hatch or three directions, at any angle and spacing in millimetres, a different angle per shape, closer lines for darker colours, and zig-zag joining so the pen lifts less. Click a shape on the map to give it its own shading.
   - **Hover round:** before drawing, the pen goes once round the outside of everything (a box or the outline) just above the paper, so you can check the paper is in the right place.
   - **Quiet, smooth motion:** the whole drawing runs as one continuous path with low, rounded pen hops instead of stopping at every lift. Choose Quiet & smooth, Balanced or Fast; a quiet-speed finder listens with the microphone and picks the quietest speeds. A precise stop-at-every-point mode, pause and resume, and a 20 mm test square are there too.
@@ -30,7 +34,9 @@ Control a **Dobot Magician** robot arm straight from your browser over USB — n
 - **Imitate** — the arm mirrors your hand or arm through the webcam (following glides smoothly instead of jumping); draw in the air with a pinch; teach a movement by showing it.
 - **Face & reactions** — reads expressions, winks, nods, head shakes and hand signs, reacts to them, and can follow your face.
 - **Auto-calibration** — centres the arm, checks its joint readings against the Magician's geometry, measures the tool offset and works out the reachable area at every height. The only manual step is lowering the pen onto the paper.
+- **Safety lock** — next to Centre: after centring, every arm movement is checked against the allowed area (the green zone, inside the safe zone if there is one) before it starts. If it would leave, an alert offers to adjust it yourself or to trim it to the boundary; following holds at the boundary.
 - **Safety** — every target is kept inside the reachable space, alarms are shown and can be cleared, and **STOP** (or Esc) halts everything.
+- **Bluetooth and Wi-Fi** — Dobot's Wireless 1 (Bluetooth) module with Web Bluetooth, and the Wireless 2 (Wi-Fi) module through a small bridge program; the Wi-Fi network is set from the app over USB.
 - **Simulator** — try every feature without hardware.
 
 | Live drawing | Picture to lines |
@@ -65,9 +71,19 @@ To use the other tabs again, the arm needs DobotStudio's normal firmware: DobotS
 
 If the arm does not appear in the port list, check the cable and that the arm is switched on; some computers also need a driver for the arm's USB-serial chip.
 
+### Bluetooth and Wi-Fi
+
+The modules plug into the 10-pin port on the back of the base. Use one at a time, and switch the arm off before plugging one in or out.
+
+- **Bluetooth (Wireless 1):** switch the arm on, click **▾** next to Connect USB → **Bluetooth (Wireless 1)** (or **Connect over Bluetooth** in Setup → Wireless modules) and pick the module in the list Chrome shows. On a Mac, allow Bluetooth for Chrome first (System Settings → Privacy & Security → Bluetooth). Needs Chrome or Edge with Web Bluetooth (macOS, Windows, ChromeOS; on Linux it is still behind a Chrome flag).
+- **Wi-Fi (Wireless 2), once:** with the module plugged in, connect over USB, open **Setup → Wireless modules**, enter your network's name and password (a 2.4 GHz network that asks only for a name and password, such as a home router or phone hotspot) and press **Send to the Wi-Fi module**. **Read its status** shows the arm's address. If the module ever forgets its network (for example after a reset), send it again.
+- **Wi-Fi, every time:** a web page cannot send the module's UDP messages, so run the small bridge program on the same computer — **Download the Wi-Fi bridge** in Setup, then `python3 magician_wifi_bridge.py` (Python 3, nothing to install). Enter the arm's address and press **Connect over Wi-Fi** (or ▾ → **Wi-Fi (Wireless 2)…** to get there).
+- The **Host** module (USB host, for a gamepad or USB stick plugged into the arm) runs the arm without a computer, so the app does not use it.
+
 ## Requirements
 
 - A desktop browser with Web Serial: Chrome or Edge.
+- For Bluetooth: Chrome or Edge with Web Bluetooth. For Wi-Fi: Python 3 on the computer, to run the bridge.
 - For the camera features: a webcam and an internet connection the first time, to download the vision models (Google MediaPipe). Camera images are processed in the browser and are not uploaded.
 
 ## Safety
@@ -86,6 +102,9 @@ If the arm does not appear in the port list, check the cable and that the arm is
 - **Smooth motion:** strokes are cut into short continuous-path moves and short gaps become rounded hops, so the arm's controller can look ahead instead of stopping; speed and acceleration are capped for every command.
 - **Drawing library:** each drawing is stored on a 0–1000 grid as base-64 delta runs (about 3 MB for all 2 245). Sources: [Openclipart](https://openclipart.org) (public domain), [Tabler Icons](https://tabler.io/icons) (MIT), [d3-celestial](https://github.com/ofrohn/d3-celestial) star data (BSD 3-Clause), [flag-icons](https://github.com/lipis/flag-icons) (MIT), Hershey lettering, and drawings made by program for this project (`tools/library`). The app shows the credits and licence texts (Plotter → Drawing library → Credits and licences).
 - **Text:** single-line Hershey and EMS fonts, encoded compactly (`tools/fonts`).
+- **Persian text:** letters take their presentation forms from their Unicode joining type and their neighbours (lam-alef as one letter; zero-width non-joiner, joiner and tatweel respected); marks are placed over or under their letter. Lines are ordered with the Unicode bidirectional algorithm for a right-to-left paragraph (rules W1–W7, N0–N2, I2, L1, L2 and mirrored brackets). The font is the centre lines of Vazirmatn (Round Dots, Thin): outlines thinned to their centre lines, joining strokes ending exactly at the joining point and dots drawn as small circles (`tools/fonts/persian`).
+- **Safe zone and safety lock:** the allowed area is the green zone at paper height intersected with the safe polygon shrunk by the margin (Clipper). Pen-up travel takes the shortest way round inside it, through the area's inward corners. The lock checks a whole planned path before it starts, trims it to the area on request, and checks every single move again before it is sent.
+- **Bluetooth and Wi-Fi:** the same command frames as over USB. Bluetooth writes them to the module's characteristic …CDD2 in 20-byte pieces and reads replies from …CDD1 (service `0003CDD0-0000-1000-8000-00805F9B0131`). Wi-Fi sends them as UDP messages to port 8899; `tools/wifi-bridge/magician_wifi_bridge.py` relays between a WebSocket on 127.0.0.1:8890 (accepting only this app's pages) and the arm. The module's network settings are commands 150–157, sent over USB.
 - **3D printing:** the model is cut through the middle of every layer; each mesh edge that crosses the cut gives one point, so neighbouring triangles link into closed outlines exactly. Walls, skins and supports are offsets and boolean operations on those outlines with [Clipper](http://www.angusj.com) (integer micrometres); infill is scan lines on a fixed grid, joined into zig-zags where the link stays inside the part. Solid layers go wherever the part is open above or below within the top and bottom layer counts. The G-code is Marlin-style (absolute positions, extrusion reset each layer) for Dobot's 3D-printer firmware, centred on X0 Y0 as in Dobot's Cura profile. The page sends it over Web Serial at 115 200 baud with line numbers and checksums, one line per `ok` by default (or ahead into the 63-byte buffer, as Repetier Host does), resending damaged lines and renumbering after a printer restart.
 - **One file:** the app is a single self-contained HTML page built from the files in `src/`.
 
@@ -98,7 +117,8 @@ src/                             source, one file per feature (build order in bu
 tests/unit/                      Node.js tests, no dependencies
 tests/e2e/                       browser tests (Playwright + the built-in simulator)
 tools/library/                   how the drawing library was made (generators, export)
-tools/fonts/                     how the single-line fonts were made
+tools/fonts/                     how the single-line fonts were made (Persian: tools/fonts/persian)
+tools/wifi-bridge/               the Wi-Fi bridge program (WebSocket ↔ UDP)
 docs/                            the website (GitHub Pages): landing page, the app in docs/app/, screenshots
 ```
 
@@ -118,26 +138,30 @@ python3 tests/e2e/e2e_shade.py       # shading
 python3 tests/e2e/e2e_objects.py     # several objects, text tool, layouts
 python3 tests/e2e/e2e_library.py     # drawing library: every drawing loads and fits
 python3 tests/e2e/e2e_print.py       # 3D printing: files, placement, slicing, printing on the simulator
+python3 tests/e2e/e2e_zone.py        # safe zone, paper heights, Clear plotter, Redraw, safety lock
+python3 tests/e2e/e2e_wireless.py    # Wi-Fi through the real bridge to a pretend arm (needs Node.js)
+python3 tests/e2e/e2e_persian.py     # Persian text
 ```
 
 `e2e_library.py` also compares the library folder with the app when the folder from the release is unpacked as `plotter-library/` at the repository root (or `MAGICIAN_LIBRARY` points at it).
 
-The app also has a built-in self-test: **Setup → Test camera features**, or open the file with `?selftest=1`. It loads the vision models, checks the camera, the beat tracker, the picture tracer, the geometry model, placement, smooth motion, the drawing library, shading, text, several objects and 3D printing (a model sliced and printed on the printer simulator), all with the simulators so nothing moves or heats.
+The app also has a built-in self-test: **Setup → Test camera features**, or open the file with `?selftest=1`. It loads the vision models, checks the camera, the beat tracker, the picture tracer, the geometry model, placement, smooth motion, the drawing library, shading, text, Persian text, the safe zone and safety lock, the Wi-Fi set-up messages, several objects and 3D printing (a model sliced and printed on the printer simulator), all with the simulators so nothing moves or heats.
 
 ## Status
 
-Version 1.5.0 (see the [changelog](CHANGELOG.md)). The app is tested with the built-in kinematic simulator and printer simulator (unit and browser tests) and with the self-test in Chrome on macOS. Testing on a physical arm is limited so far; auto-calibration checks the arm's joint conventions live and stops if they do not match. 3D printing follows the settings in Dobot's guide and has not yet been tried on a physical 3D-printing kit, so watch the first prints closely. If something does not work with your arm, please open an issue.
+Version 1.6.0 (see the [changelog](CHANGELOG.md)). The app is tested with the built-in kinematic simulator and printer simulator (unit and browser tests) and with the self-test in Chrome on macOS. Testing on a physical arm is limited so far; auto-calibration checks the arm's joint conventions live and stops if they do not match. 3D printing follows the settings in Dobot's guide and has not yet been tried on a physical 3D-printing kit, so watch the first prints closely. Bluetooth and Wi-Fi follow Dobot's communication protocol and are tested with a pretend Bluetooth device and a pretend arm answering UDP through the real bridge, not yet with the physical modules. If something does not work with your arm, please open an issue.
 
 ## Acknowledgements
 
 - Protocol details were cross-checked against the open-source `pydobot` library and Dobot's `DobotDllType.py`.
 - Vision uses [Google MediaPipe](https://github.com/google-ai-edge/mediapipe) Tasks Vision (Apache-2.0), loaded at runtime.
 - Drawing library: the Openclipart artists (credited in the app and in the library's `CREDITS.md`), Tabler Icons by Paweł Kuna, d3-celestial by Olaf Frohn, and the flag-icons contributors.
-- Fonts: the Hershey fonts by Dr. A. V. Hershey (U.S. National Bureau of Standards), the EMS fonts by Sheldon B. Michaels (SIL Open Font License 1.1), and their SVG versions by Windell H. Oskay (Evil Mad Scientist, `hersheytext`).
+- Fonts: the Hershey fonts by Dr. A. V. Hershey (U.S. National Bureau of Standards), the EMS fonts by Sheldon B. Michaels (SIL Open Font License 1.1), and their SVG versions by Windell H. Oskay (Evil Mad Scientist, `hersheytext`). The Persian font is made from [Vazirmatn](https://github.com/rastikerdar/vazirmatn) by Saber Rastikerdar and the Vazirmatn Project Authors (SIL Open Font License 1.1).
+- Bluetooth and Wi-Fi: Dobot's Communication Protocol documents (V1.0.4 and V1.1.5).
 - 3D printing: [Clipper](http://www.angusj.com) by Angus Johnson (polygon clipping and offsetting) in Timo's JavaScript translation, which uses Tom Wu's JSBN; print defaults from Dobot's Magician user guide and Dobot's printing tips.
 
 ## Licence
 
-[MIT](LICENSE), except `src/part48_clipper.js`: Clipper 6.4.2 (Boost Software License 1.0) with JSBN (Tom Wu's licence). Both licence texts are in that file and in the app (3D print → Print settings → Credits and licences).
+[MIT](LICENSE), except `src/part48_clipper.js`: Clipper 6.4.2 (Boost Software License 1.0) with JSBN (Tom Wu's licence) — both licence texts are in that file and in the app (3D print → Print settings → Credits and licences) — and `src/part57_persian_font.js`, the Persian font made from Vazirmatn: SIL Open Font License 1.1 (the text is in that file and in the app: Plotter → Text → Fonts and licences).
 
 This project is not affiliated with or endorsed by Dobot. "Dobot" and "Magician" are trademarks of their respective owner.

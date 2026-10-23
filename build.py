@@ -2,7 +2,7 @@
 """Builds the single-file app: joins the scripts in src/ (in this order) into src/part7_shell.html and
 writes magician-smart-controller.html at the repository root, and the same file as docs/app/index.html
 for the website. No dependencies: python3 build.py"""
-import collections, pathlib, re
+import collections, json, pathlib, re
 
 ROOT = pathlib.Path(__file__).resolve().parent
 SRC = ROOT / 'src'
@@ -16,6 +16,8 @@ ORDER = [
     'part42_shade.js',
     'part44_fonts_data.js',
     'part45_text.js',
+    'part57_persian_font.js',
+    'part58_persian.js',
     'part32_trace.js',
     'part3_svg.js',
     'part4_ui_core.js',
@@ -46,6 +48,10 @@ ORDER = [
     'part50_printer.js',
     'part51_print_view.js',
     'part52_print_ui.js',
+    'part53_zone.js',
+    'part54_zone_ui.js',
+    'part55_lock.js',
+    'part56_wireless.js',
 ]
 
 # every part shares one global scope: a name declared at the top level of two parts silently replaces the first
@@ -59,6 +65,10 @@ if clash:
     raise SystemExit(f'names declared in more than one part: {clash}')
 
 js = '\n'.join((SRC / name).read_text(encoding='utf-8') for name in ORDER)
+# the Wi-Fi bridge program travels inside the app, so it can be downloaded from Setup
+bridge = (ROOT / 'tools' / 'wifi-bridge' / 'magician_wifi_bridge.py').read_text(encoding='utf-8')
+assert js.count('"%%WIFI_BRIDGE_PY%%"') == 1, 'part56 must hold the bridge placeholder once'
+js = js.replace('"%%WIFI_BRIDGE_PY%%"', json.dumps(bridge))
 shell = (SRC / 'part7_shell.html').read_text(encoding='utf-8')
 assert shell.count('<script>\n</script>') == 1, 'the shell must contain exactly one empty <script> block'
 html = shell.replace('<script>\n</script>', '<script>\n' + js + '\n</script>')

@@ -1,11 +1,45 @@
 # Changelog
 
-## Unreleased
+## 1.6.0 — 2026-10-23
+
+### Safe drawing zone
+- **Draw safe zone:** click the corners of your paper (or any area) on the plotter map; click the first corner again or press Done to close it. Or pick a paper size (A6, A5, A4, A3, Letter), add a corner where the pen is now (move it there by hand or with Mouse control), drag corners to edit, undo, switch the zone off or remove it. It is kept in the browser. Crossing edges and tiny areas are refused.
+- Nothing the pen does goes outside the zone: drawings are placed inside it (with the margin), Largest and dragging stop at its edge, and pen-up travel between lines, hover round and redraws go round inside it by the shortest way. Only centring (home) and calibration may leave it.
+
+### Safety lock (next to Centre)
+- Once the arm has been centred, the lock keeps every arm movement inside the allowed area — the green zone at paper height, inside the safe zone if there is one — and never more than 1 mm below the paper.
+- Before a drawing, hover round, test square, replay or click-move starts, its whole path is checked. If it would leave the area, an alert says by how much and offers **Adjust it myself** (nothing moves) or **Trim to the boundary** (drawing lines keep only their parts inside and the pen lifts round the rest; other moves are pulled in to the boundary).
+- Following (mouse drag, hand, arm, face, dance) holds at the boundary at the first breach and asks once: stop, or trim for the rest of the session. Keyboard nudges and the mouse wheel stop at the boundary.
+- Underneath, every move sent to the arm is checked again and one that would leave is refused. A pill shows when the lock is trimming or holding; after reconnecting, the lock waits for the arm to be centred again.
+
+### Paper height
+- **Re-set pen height…** for a new sheet or paper at another height: lower the pen until it touches the paper, as in calibration; the rest of the calibration is kept.
+- Save heights by name (a board, a notebook, card…) and switch between them with **Use**.
+
+### Clear plotter and Redraw
+- **Clear plotter** removes every drawing, picture and text from the paper and clears the red lines (Undo clear brings them back).
+- **Redraw** draws again what has been drawn and is on the map — for duplicates and multiple copies (1–50). Between copies it can wait for a fresh sheet.
+
+### Persian text
+- A **Persian** switch in the Text tool: the text box writes right to left, and text is drawn in a new single-line Persian font made from Vazirmatn (SIL Open Font License), letter height = the height of alef.
+- Letters take their isolated, initial, middle and final forms and join exactly; lam-alef is one letter; the half-space (zero-width non-joiner), zero-width joiner and tatweel work as in typing; vowel marks (fatha, kasra, damma, tanwin, shadda, sukun, hamza, superscript alef) sit over or under their letter.
+- Lines run right to left with English words and numbers inside them left to right, and brackets mirrored (the Unicode bidirectional algorithm for a right-to-left paragraph, checked against a reference implementation on 2 000 random lines).
+- **Persian digits** (on by default): 0–9 are drawn as ۰–۹, except inside English words such as MP3. Regular and bold; letter spacing keeps joined letters joined. Font credit and licence in Fonts and licences.
+
+### Bluetooth and Wi-Fi (Dobot's Wireless 1 and Wireless 2 modules)
+- ▾ next to **Connect USB** offers **Bluetooth (Wireless 1)** and **Wi-Fi (Wireless 2)…**, and Setup has a Wireless modules card; the connection pill shows the link in use.
+- **Bluetooth (Wireless 1):** connects from Chrome or Edge with Web Bluetooth and sends the same commands as USB (service 0003CDD0-0000-1000-8000-00805F9B0131).
+- **Wi-Fi (Wireless 2):** the module's network (name, password, automatic or fixed address) is sent once from Setup over USB, and its status can be read back. A web page cannot send the module's UDP messages, so a small bridge program (Python, no installs; download it from Setup) passes them on: start it, enter the arm's address and connect. Lost messages are asked for again.
+- The Host module (USB host, for a gamepad or USB stick on the arm) works on the arm without a computer, so the app does not use it; Setup says so.
 
 ### Website
 - The project has a website on GitHub Pages, https://kalatehjari.github.io/dobot-magician-controller/: a landing page (features, screenshots, getting started, 3D printing, safety, questions), and the app itself at [/app/](https://kalatehjari.github.io/dobot-magician-controller/app/) — the same file as the release download — so it can be used without downloading anything.
 - Search engines: page title and description, canonical address, Open Graph and Twitter card with a social image, structured data (web application, source code, questions), a sitemap, a 404 page and an IndexNow key.
 - `build.py` also writes the website copy of the app, `docs/app/index.html`; `tests/unit/test_site.js` checks the copy, links, pictures and tags.
+
+### Other
+- Self-test: also checks Persian text, the safe zone and safety lock, and the Wi-Fi set-up messages.
+- Tests: `test_zone.js`, `test_wireless.js`, `test_persian.js`; browser tests `e2e_zone.py`, `e2e_wireless.py` (through the real bridge to a pretend arm on UDP, with lost messages) and `e2e_persian.py`.
 
 ## 1.5.0 — 2026-10-23
 
