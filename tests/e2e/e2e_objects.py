@@ -115,7 +115,7 @@ async def main():
             await pg.click('#nav-plot'); await asyncio.sleep(0.3)
 
             # ---------- empty paper ----------
-            st = await ev("({ count: document.getElementById('obj-count').textContent, dis: ['btnObjDup', 'btnObjDel', 'btnObjClear', 'pl-size', 'sh-pattern'].map(id => document.getElementById(id).disabled), mode: document.getElementById('tx-mode').textContent, fonts: document.querySelectorAll('#tx-fonts .tx-font').length, styles: document.getElementById('tx-style').options.length })")
+            st = await ev("({ count: document.getElementById('obj-count').textContent, dis: ['btnObjDup', 'btnObjDel', 'btnObjClear', 'pl-size', 'sh-pattern'].map(id => document.getElementById(id).disabled), mode: document.getElementById('tx-mode').textContent, fonts: [...document.querySelectorAll('#tx-fonts .tx-font')].filter(b => !b.hidden).length, styles: document.getElementById('tx-style').options.length })")
             check('empty paper: nothing selected, controls off, 13 fonts with 4 styles', st['count'] == 'Nothing on the paper yet' and all(st['dis']) and st['mode'] == 'new text' and st['fonts'] == 13 and st['styles'] == 4, json.dumps(st))
 
             # ---------- two library drawings ----------
