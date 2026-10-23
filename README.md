@@ -2,6 +2,8 @@
 
 Control a **Dobot Magician** robot arm straight from your browser over USB — no Dobot software needed. Open one HTML file in Chrome or Edge, plug the arm in, and draw, write, 3D print, move, record, dance and react.
 
+**Use it online:** [open the app](https://kalatehjari.github.io/dobot-magician-controller/app/) · [website](https://kalatehjari.github.io/dobot-magician-controller/) — nothing to download. Or get the single HTML file from the [latest release](../../releases/latest).
+
 ![Placing a traced picture inside the arm's drawing zone](docs/placement.png)
 
 ## Features
@@ -43,8 +45,8 @@ Control a **Dobot Magician** robot arm straight from your browser over USB — n
 
 ## Quick start
 
-1. Download `magician-smart-controller.html` from the [latest release](../../releases/latest) (or from this repository).
-2. Open it in **Google Chrome** or **Microsoft Edge** on a desktop computer. Safari and Firefox do not support Web Serial.
+1. Open the [app online](https://kalatehjari.github.io/dobot-magician-controller/app/), or download `magician-smart-controller.html` from the [latest release](../../releases/latest) (or from this repository) and open it.
+2. Use **Google Chrome** or **Microsoft Edge** on a desktop computer. Safari and Firefox do not support Web Serial. (The online app and a downloaded file keep their calibration and settings separately.)
 3. Switch the Magician on and plug it in with USB. Click **Connect USB** and pick the arm's serial port.
 4. The calibration dialog opens. Click **Start auto-calibration**, lower the pen onto the paper with the ▼ buttons, then click **This is the paper**.
 5. Open **Plotter**, pick a drawing from the library, drop in an SVG or a picture, or type some text. Place it in the green zone, press **Hover round** to check the paper, and click **Draw**.
@@ -91,19 +93,21 @@ If the arm does not appear in the port list, check the cable and that the arm is
 
 ```
 magician-smart-controller.html   the app (built; open this file)
-build.py                         joins src/ into the app
+build.py                         joins src/ into the app (and its website copy, docs/app/index.html)
 src/                             source, one file per feature (build order in build.py)
 tests/unit/                      Node.js tests, no dependencies
 tests/e2e/                       browser tests (Playwright + the built-in simulator)
 tools/library/                   how the drawing library was made (generators, export)
 tools/fonts/                     how the single-line fonts were made
-docs/                            screenshots
+docs/                            the website (GitHub Pages): landing page, the app in docs/app/, screenshots
 ```
+
+The website is served by GitHub Pages from `docs/` on `main`: `index.html` (the landing page), `app/index.html` (the app, written by `build.py`), `sitemap.xml`, `404.html`, the social card and icons, and an IndexNow key file. `tests/unit/test_site.js` checks that the app copy matches and that every link, picture and search-engine tag is in place.
 
 ## Building and testing
 
 ```sh
-python3 build.py                     # rebuilds magician-smart-controller.html from src/
+python3 build.py                     # rebuilds magician-smart-controller.html (and docs/app/index.html) from src/
 node tests/unit/run_all.js           # unit tests (or: npm test)
 
 pip install playwright && playwright install chromium

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Website
+- The project has a website on GitHub Pages, https://kalatehjari.github.io/dobot-magician-controller/: a landing page (features, screenshots, getting started, 3D printing, safety, questions), and the app itself at [/app/](https://kalatehjari.github.io/dobot-magician-controller/app/) — the same file as the release download — so it can be used without downloading anything.
+- Search engines: page title and description, canonical address, Open Graph and Twitter card with a social image, structured data (web application, source code, questions), a sitemap, a 404 page and an IndexNow key.
+- `build.py` also writes the website copy of the app, `docs/app/index.html`; `tests/unit/test_site.js` checks the copy, links, pictures and tags.
+
 ## 1.5.0 — 2026-10-23
 
 ### 3D printing (new tab)

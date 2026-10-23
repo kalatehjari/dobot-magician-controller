@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Builds the single-file app: joins the scripts in src/ (in this order) into src/part7_shell.html and
-writes magician-smart-controller.html at the repository root. No dependencies: python3 build.py"""
+writes magician-smart-controller.html at the repository root, and the same file as docs/app/index.html
+for the website. No dependencies: python3 build.py"""
 import collections, pathlib, re
 
 ROOT = pathlib.Path(__file__).resolve().parent
@@ -63,6 +64,10 @@ assert shell.count('<script>\n</script>') == 1, 'the shell must contain exactly 
 html = shell.replace('<script>\n</script>', '<script>\n' + js + '\n</script>')
 out = ROOT / 'magician-smart-controller.html'
 out.write_text(html, encoding='utf-8', newline='\n')
+# the website (GitHub Pages serves docs/) has the same app at /app/
+site_app = ROOT / 'docs' / 'app' / 'index.html'
+site_app.parent.mkdir(parents=True, exist_ok=True)
+site_app.write_text(html, encoding='utf-8', newline='\n')
 
 # sanity checks: every element the script looks up exists, and no id is used twice
 ids = re.findall(r'id="([^"]+)"', html)
@@ -71,6 +76,6 @@ refs = set(re.findall(r"(?:getElementById|\$id|\$pl)\('([^']+)'\)", js))
 # ps-… inputs of the print settings are made by p3BuildForm (part 52), so they are not in the shell
 made = re.compile(r'ps-(?!(?:support|pattern|seam|vase|fan|startCode|endCode|main|speed|ext|plate)$)\w+')
 missing = sorted(r for r in refs if r not in set(ids) and not made.fullmatch(r))
-print(f'built {out.name}: {len(html.encode())} bytes; duplicate ids: {dups or "none"}; missing ids: {missing or "none"}')
+print(f'built {out.name} and docs/app/index.html: {len(html.encode())} bytes; duplicate ids: {dups or "none"}; missing ids: {missing or "none"}')
 if dups or missing:
     raise SystemExit(1)
