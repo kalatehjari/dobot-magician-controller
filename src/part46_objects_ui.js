@@ -19,7 +19,7 @@ function renderObjectList() {
     b.title = `${o.kind === 'text' ? 'Text' : 'Drawing'}: ${o.label} — click to select it`;
     const tag = document.createElement('span'); tag.className = 'obj-kind'; tag.textContent = o.kind === 'text' ? 'Aa' : '✎';
     tag.setAttribute('aria-hidden', 'true');
-    const nm = document.createElement('span'); nm.textContent = o.label;
+    const nm = document.createElement('span'); nm.textContent = o.label; nm.dir = 'auto';
     const meta = document.createElement('span'); meta.className = 'obj-meta';
     meta.textContent = o.place ? (o.kind === 'text' && o.text ? `${o.text.height.toFixed(1)} mm letters` : `${o.place.size.toFixed(0)} mm`) : '';
     b.append(tag, nm, meta);

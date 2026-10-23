@@ -67,6 +67,16 @@ textarea{width:100%;min-height:70px;font-family:ui-monospace,Menlo,monospace;fon
 .alarmbar{background:var(--danger);color:#fff;padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-weight:600}
 .alarmbar button{background:#fff;color:var(--danger);border-color:#fff}
 [hidden]{display:none!important}
+.conn-pair{display:inline-flex}.conn-pair #btnConnect{border-top-right-radius:0;border-bottom-right-radius:0}
+.conn-more{border-top-left-radius:0;border-bottom-left-radius:0;padding:7px 8px;margin-left:1px}
+.conn-menu{margin:0;padding:6px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);box-shadow:0 6px 20px rgba(0,0,0,.18)}
+.conn-menu button{display:block;width:100%;text-align:left;margin:2px 0;border:none}
+.lockbtn{display:inline-flex;align-items:center;gap:5px}.lockbtn svg{opacity:.75}
+.lockbtn.on{background:var(--ok);border-color:var(--ok);color:#fff}.lockbtn.on svg{opacity:1}
+#lockPill{position:fixed;top:62px;right:16px;z-index:15;background:var(--panel);box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.sz-row{margin-top:2px}.sz-title{margin-right:2px}.sz-info{font-size:12px;margin:-2px 0 6px}
+canvas.plot.sz-editing{outline:2px solid var(--accent);outline-offset:-2px}
+.ph-row input[type=text]{width:170px}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
 .modal-box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;max-width:520px;width:100%;max-height:90vh;overflow:auto}
 .dots{display:flex;gap:6px;margin-bottom:10px}
@@ -141,6 +151,16 @@ canvas.world.plot:focus-visible{outline:2px solid var(--accent);outline-offset:2
 .tx-mode{font-weight:400;font-size:12px;margin-left:6px}
 #textCard.editing{border-color:var(--accent)}
 textarea.tx-text{font:15px/1.4 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;min-height:52px;resize:vertical}
+textarea.tx-text:lang(fa){font-size:17px;line-height:1.7}
+.tx-lang{display:flex;flex-wrap:wrap;align-items:center;gap:6px 20px;margin:0 0 8px}
+.tx-switch{display:inline-flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+.tx-switch [lang="fa"]{font-size:14px}
+input[type="checkbox"][switch]{accent-color:var(--accent);margin:0;cursor:pointer}
+input[type="checkbox"][switch]:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+input[type="checkbox"].sw-fb{appearance:none;-webkit-appearance:none;flex:none;width:34px;height:20px;border-radius:10px;border:0;
+  background:radial-gradient(circle,#fff 0 7px,transparent 7.5px) 0 50%/20px 20px no-repeat,var(--muted);transition:background-position .15s,background-color .15s}
+input[type="checkbox"].sw-fb:checked{background-color:var(--accent);background-position:14px 50%}
+@media (prefers-reduced-motion:reduce){input[type="checkbox"].sw-fb{transition:none}}
 .tx-fonts{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:6px;margin:8px 0 2px}
 .tx-font{height:40px;padding:4px 8px;border-radius:9px;background:var(--bg);color:var(--ink);display:flex;align-items:center;justify-content:center}
 .tx-font svg{width:100%;height:100%;display:block}
@@ -189,13 +209,16 @@ canvas.world.pr-view{height:460px;cursor:grab;margin-top:6px}
 </head>
 <body>
 <header>
-  <h1>Magician Smart Controller <span class="ver">v1.5.0</span></h1>
+  <h1>Magician Smart Controller <span class="ver">v1.6.0</span></h1>
   <span id="pill" class="pill">Not connected</span>
-  <button id="btnConnect" class="primary">Connect USB</button>
+  <span class="conn-pair"><button id="btnConnect" class="primary">Connect USB</button><button id="btnConnMore" class="primary conn-more" popovertarget="connMenu" aria-label="Other ways to connect: Bluetooth or Wi-Fi" title="Bluetooth or Wi-Fi">▾</button></span>
+  <div id="connMenu" popover class="conn-menu"><button id="btnMenuBle">Bluetooth (Wireless 1)</button><button id="btnMenuWifi">Wi-Fi (Wireless 2)…</button></div>
   <button id="btnSim">Simulator</button>
   <div id="pose" class="pose">—</div>
   <span id="smartActivity" class="pill sim" hidden></span>
   <button id="btnCentre">Centre (home)</button>
+  <button id="btnLock" class="lockbtn" aria-pressed="false"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="2.5" y="7" width="11" height="8" rx="1.6" fill="currentColor"/><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.7"/></svg> <span id="lockLabel">Safety lock</span></button>
+  <span id="lockPill" class="pill sim" hidden></span>
   <button id="btnStop" class="estop">STOP</button>
 </header>
 <div id="alarmBar" class="alarmbar" hidden><span id="alarmText"></span><button id="btnClearAlarm">Clear alarm &amp; re-arm</button></div>
@@ -305,6 +328,19 @@ canvas.world.pr-view{height:460px;cursor:grab;margin-top:6px}
       <button id="btnPlLargest" title="As big as the green zone allows at this rotation">Largest</button>
       <label class="f">Safety margin (mm)<input id="plot-margin" type="number" value="6" step="1" min="0" max="30"></label>
     </div>
+    <div class="row sz-row">
+      <b class="sz-title">Safe zone</b>
+      <button id="btnSzDraw" title="Click the corners of your paper (or any area) on the map; the pen never goes outside it">Draw safe zone</button>
+      <button id="btnSzEdit" class="ghost" title="Drag the corners on the map">Edit corners</button>
+      <select id="sz-paper" aria-label="Safe zone from a paper size"><option value="">Paper size…</option><option value="A6">A6</option><option value="A5">A5</option><option value="A4">A4</option><option value="A3">A3</option><option value="Letter">Letter</option></select>
+      <label id="sz-onWrap" class="small-label"><input id="sz-on" type="checkbox"> Use safe zone</label>
+      <button id="btnSzClear" class="ghost">Remove zone</button>
+      <button id="btnSzUndo" class="ghost" hidden>Undo</button>
+      <button id="btnSzPen" hidden title="Add a corner where the pen is now (move it there with Mouse control, or by hand with the unlock button)">Add pen position</button>
+      <button id="btnSzDone" class="primary" hidden>Done</button>
+      <button id="btnSzCancel" class="ghost" hidden>Cancel</button>
+    </div>
+    <div id="sz-info" class="muted sz-info"></div>
     <div class="row obj-bar">
       <span id="obj-count" class="muted"></span>
       <span class="obj-tools">
@@ -323,6 +359,10 @@ canvas.world.pr-view{height:460px;cursor:grab;margin-top:6px}
 
   <div id="textCard" class="card">
     <h3>Text <span id="tx-mode" class="muted tx-mode"></span></h3>
+    <div class="tx-lang">
+      <label class="tx-switch"><input id="tx-fa" type="checkbox" switch> Persian <span lang="fa" dir="rtl">فارسی</span></label>
+      <label id="tx-fadigits-wrap" class="tx-switch" hidden><input id="tx-fadigits" type="checkbox" switch checked> Persian digits <span lang="fa" dir="rtl">۱۲۳</span></label>
+    </div>
     <textarea id="tx-text" class="tx-text" rows="2" spellcheck="true" aria-label="Text to draw" placeholder="Type the text to draw…"></textarea>
     <div id="tx-fonts" class="tx-fonts" role="group" aria-label="Font"></div>
     <div class="row">
@@ -338,7 +378,7 @@ canvas.world.pr-view{height:460px;cursor:grab;margin-top:6px}
       <button id="btnTextAdd" class="primary">Add text</button>
       <span id="tx-info" class="muted"></span>
     </div>
-    <div class="hint">Single-line fonts: every letter is drawn with one pen line, as if written, so text plots quickly and cleanly. Letter height is the height of a capital letter. Several lines are fine — press Return in the text box. Accented letters missing from a font (ā, ł, ő…) are drawn with the accent added.</div>
+    <div class="hint">Single-line fonts: every letter is drawn with one pen line, as if written, so text plots quickly and cleanly. Letter height is the height of a capital letter. Several lines are fine — press Return in the text box. Accented letters missing from a font (ā, ł, ő…) are drawn with the accent added. <b>Persian</b>: switch it on to write right to left in a single-line Persian font (letter height = the height of alef). Letters join and take their shapes by themselves, a half-space (zero-width non-joiner) keeps two letters apart, vowel marks sit on their letters, and English words and numbers inside the text stay left to right.</div>
     <details id="tx-credits" style="margin-top:6px"><summary class="muted">Fonts and licences</summary><div id="tx-credit-body" class="tx-credit-body"></div></details>
   </div>
 
@@ -423,6 +463,24 @@ canvas.world.pr-view{height:460px;cursor:grab;margin-top:6px}
       <input id="layout-file" type="file" accept=".json,application/json" hidden>
       <button id="btnLayoutSvg" class="ghost" title="Everything on the paper as one SVG file, in millimetres">Layout SVG</button>
       <button id="btnNewSheet" class="ghost" title="Clear the red lines after putting in a fresh sheet of paper">New sheet</button>
+      <button id="btnPlotClear" class="ghost" title="Remove every drawing, picture and text from the paper and clear the red lines">Clear plotter</button>
+      <button id="btnPlotUndo" class="ghost" hidden>Undo clear</button>
+    </div>
+    <div class="row">
+      <button id="btnRedraw" title="Draw again what has been drawn — for more copies, or over the same lines">Redraw</button>
+      <label class="f">Copies<input id="rd-copies" type="number" min="1" max="50" step="1" value="1"></label>
+      <label class="small-label"><input id="rd-fresh" type="checkbox" checked> Wait for a fresh sheet between copies</label>
+      <span id="rd-info" class="muted"></span>
+    </div>
+    <div class="row ph-row">
+      <b>Paper height</b>
+      <span id="ph-now" class="muted"></span>
+      <button id="btnPenReset" title="For a new sheet or paper at another height: lower the pen until it touches the paper">Re-set pen height…</button>
+      <select id="ph-saved" aria-label="Saved paper heights"></select>
+      <button id="btnPhUse" class="ghost">Use</button>
+      <button id="btnPhDel" class="ghost">Delete</button>
+      <input id="ph-name" type="text" maxlength="40" placeholder="Name, e.g. Board 18 mm" aria-label="Name for the current paper height">
+      <button id="btnPhSave" class="ghost">Save height</button>
     </div>
     <div id="plot-stats" class="stats">Load a drawing or a picture to start.</div>
     <div class="hint"><b>Hover round</b> checks the paper before drawing: the pen goes once round the outside of everything that will be drawn, about 5 mm above the paper, without touching it — <b>box</b> goes round the corners of a rectangle that holds it all, <b>outline</b> follows the outside of the lines. Its path shows dashed on the map.</div>
@@ -764,6 +822,30 @@ canvas.world.pr-view{height:460px;cursor:grab;margin-top:6px}
     <div class="row"><label style="font-size:13px"><input id="dbgFrames" type="checkbox"> Show raw protocol frames in log (debugging)</label></div>
   </div>
 
+  <div id="wirelessCard" class="card">
+    <h3>Wireless modules</h3>
+    <p class="muted" style="margin-top:0">The Bluetooth (Wireless 1) and Wi-Fi (Wireless 2) modules plug into the 10-pin port on the back of the base. Use one at a time, and switch the arm off before plugging one in or out.</p>
+    <h4>Bluetooth (Wireless 1)</h4>
+    <div class="row"><button id="btnBle" class="primary">Connect over Bluetooth</button>
+      <label class="f">Packet size (bytes)<input id="ble-chunk" type="number" min="20" max="180" step="1" value="20"></label></div>
+    <div id="ble-note" class="hint">Chrome lists nearby Bluetooth devices: pick the arm's module (usually named after Dobot). On a Mac, allow Bluetooth for Chrome first (System Settings → Privacy &amp; Security → Bluetooth). Everything works as over USB, a little slower.</div>
+    <h4>Wi-Fi (Wireless 2)</h4>
+    <div class="hint"><b>1. Once, over USB:</b> with the arm off, plug in the Wi-Fi module; switch on, press Connect USB, and send your network's name and password. The module joins 2.4 GHz networks that ask only for a name and password (a home router or phone hotspot — not one that needs a user name).</div>
+    <div class="row"><label class="f">Network name (SSID)<input id="wf-ssid" type="text" autocomplete="off" spellcheck="false"></label>
+      <label class="f">Password<input id="wf-pass" type="password" autocomplete="off"></label>
+      <label class="small-label"><input id="wf-dhcp" type="checkbox" checked> Address from the router (DHCP)</label></div>
+    <div id="wf-fixed" class="row" hidden><label class="f">Address<input id="wf-ip" placeholder="192.168.1.50"></label><label class="f">Netmask<input id="wf-mask" placeholder="255.255.255.0"></label>
+      <label class="f">Gateway<input id="wf-gw" placeholder="192.168.1.1"></label><label class="f">DNS<input id="wf-dns" placeholder="192.168.1.1"></label></div>
+    <div class="row"><button id="btnWfApply">Send to the Wi-Fi module</button><button id="btnWfStatus" class="ghost">Read its status</button><span id="wf-status" class="muted"></span></div>
+    <div class="hint"><b>2. Then without the cable:</b> a web page cannot send the Wi-Fi module's messages (UDP), so a small bridge program runs on this computer and passes them on. Download it, start it in Terminal with <code>python3 ~/Downloads/magician_wifi_bridge.py</code> (it needs nothing else), type the arm's address — shown above once the module has joined — and connect.</div>
+    <div class="row"><button id="btnWfBridge">Download the Wi-Fi bridge</button>
+      <label class="f">Arm's address<input id="wf-armip" placeholder="192.168.1.50" spellcheck="false"></label>
+      <label class="f">Bridge port<input id="wf-bport" type="number" value="8890" min="1024" max="65535"></label>
+      <button id="btnWifi" class="primary">Connect over Wi-Fi</button></div>
+    <h4>Host module (joystick kit)</h4>
+    <div class="hint">The Host module connects the kit's gamepad straight to the arm, with no computer — the app cannot talk to the arm through it. Swap it for the USB cable, Bluetooth or Wi-Fi to use the app. 3D printing uses the printer firmware over the USB cable.</div>
+  </div>
+
   <div class="card">
     <h3>Safety limits and calibration</h3>
     <div class="warnbox">These defaults are conservative starting values, not measurements from your unit. Before drawing: set the <b>min/max reach</b> and <b>Z range</b> to match your calibration, lower the tip by hand (Mouse tab, Z slider) until it just touches the paper, then press <b>Set pen-down = current Z</b>.</div>
@@ -850,6 +932,16 @@ canvas.world.pr-view{height:460px;cursor:grab;margin-top:6px}
   <label class="small-label pr-check"><input type="checkbox"> Filament is loaded: it comes out of the nozzle when fed.</label>
   <label class="small-label pr-check"><input type="checkbox"> Nothing is in the arm's way, and I will stay with the printer while it prints.</label>
   <div class="row" style="justify-content:flex-end;margin-top:12px"><button id="btnPrCheckNo" class="ghost">Cancel</button><button id="btnPrCheckGo" class="primary" disabled>Heat and print</button></div>
+</div></div>
+<div id="lockAsk" class="modal" hidden><div class="modal-box">
+  <h3 id="lkTitle" style="margin-top:0"></h3>
+  <p id="lkText" class="muted"></p>
+  <div id="lkBtns" class="row" style="justify-content:flex-end"></div>
+</div></div>
+<div id="rdAsk" class="modal" hidden><div class="modal-box">
+  <h3 style="margin-top:0">Next copy</h3>
+  <p id="rdAskText" class="muted"></p>
+  <div class="row" style="justify-content:flex-end"><button id="btnRdStop" class="ghost">Stop</button><button id="btnRdGo" class="primary">Continue</button></div>
 </div></div>
 <div id="autocal" class="modal" hidden><div class="modal-box"><div id="autocalBody"></div></div></div>
 <div id="wizard" class="modal" hidden><div class="modal-box"><div id="wizBody"></div></div></div>

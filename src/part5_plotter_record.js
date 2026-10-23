@@ -4,6 +4,7 @@ async function runJob(name, cmds, progressEl, opts = {}) {
   if (S.running) throw new Error('Another job is already running. Press STOP first.');
   if (!cmds.length) throw new Error('Nothing to run.');
   if (S.alarm.length) throw new Error('Alarm active — clear it first (red bar).');
+  if (typeof lockAssert === 'function') lockAssert(name, cmds, S.cmd || S.pos);   // safety lock: refuses moves outside the allowed area
   S.running = true;
   S.live = false; setLiveButton();
   log(`${name}: ${cmds.length} moves…`);
@@ -75,7 +76,10 @@ function drawBand() {
 function drawZone() {
   const b = drawBand(), L = S.limits, margin = Math.max(0, parseFloat(plotOpt('plot-margin')) || 0);
   const rIn = b.minR + margin, rOut = b.maxR - margin, dth = rIn > 0 ? margin / rIn / RAD : 0;
-  return { rIn, rOut, thMin: L.thMin + dth, thMax: L.thMax - dth, margin, band: b, fromModel: b.fromModel };
+  const z = { rIn, rOut, thMin: L.thMin + dth, thMax: L.thMax - dth, margin, band: b, fromModel: b.fromModel };
+  const P = typeof safePoly === 'function' ? safePoly() : null;      // the safe zone the user drew (part 54)
+  if (P) { const c = safePrep(P); z.poly = P; z.pq = c.pq; z.polyKey = c.key; }
+  return z;
 }
 
 // Largest upright rectangle in the green zone (the air-drawing area).
@@ -567,6 +571,7 @@ function drawPlot() {
   const ctx = setupCanvas(plotCv), v = plotView(), z = drawZone();
   drawBase(plotCv, v, ctx, { band: false });
   drawZoneShape(ctx, v, z);
+  if (typeof zoneOverlay === 'function') zoneOverlay(ctx, v, z);
   const objs = S.plot.objects;
   if (objs.length) {
     if (S.plot.zoneKey && S.plot.zoneKey !== zoneKey(z) && !S.running && !PL.drag) {   // reach or margin changed
@@ -628,12 +633,20 @@ function coreCuts(cmds, start) {
 
 async function runDrawing(name, ops, start) {
   const smooth = plotOpt('plot-motion') === 'smooth';
-  const planned = plotCommands(ops, S.limits, start, { cp: smooth, continuous: smooth, speed: S.speed.draw, core: drawZone().rIn, ...hopSettings() });
+  const route = typeof zoneTravelFor === 'function' ? zoneTravelFor() : null;   // safe zone or safety lock: travel round inside
+  const planned = plotCommands(ops, S.limits, start, { cp: smooth, continuous: smooth, speed: S.speed.draw, core: drawZone().rIn, route, ...hopSettings() });
+  return runPlannedDrawing(name, planned, start, smooth);
+}
+
+// Runs planned drawing moves (from runDrawing, or a redraw of earlier ones) as a tracked job: the
+// lines turn red on the map as the arm draws them.
+async function runPlannedDrawing(name, planned, start, smooth) {
   const bad = unreachableCount(planned);       // check first, so nothing is silently squashed
   if (bad) return log(`${bad} point(s) are outside the arm's reach at pen height. Keep the drawing inside the green zone; if the arm is far away, press Centre (home) first.`, 'err');
   const cuts = coreCuts(planned, start);
   if (cuts) return log(`${cuts} move(s) would pass too close to the base. Move the drawing further from the base.`, 'err');
-  const cmds = planned.map(c => ({ ...c, ...clampTarget(c.x, c.y, c.z) }));
+  let cmds = planned.map(c => (c.x === undefined ? c : { ...c, ...clampTarget(c.x, c.y, c.z) }));
+  if (typeof lockGate === 'function') { cmds = await lockGate(name, cmds, start, 'draw'); if (!cmds) return false; }
   const cpAcc = parseFloat(plotOpt('plot-cpacc')) || 150;
   const job = { name, cmds, start: { x: start.x, y: start.y, z: start.z }, zD: S.limits.zDown, idx: new Array(cmds.length).fill(0),
                 sent: 0, ke: 0, k: 0, t: 0, active: true, done: false };
@@ -653,6 +666,8 @@ async function runDrawing(name, ops, start) {
   bar.style.width = ok ? '100%' : bar.style.width;
   setTimeout(() => { if (!S.running) bar.style.width = '0%'; }, 900);
   drawPlot();
+  if (typeof redrawInfo === 'function') redrawInfo();
+  return ok;
 }
 
 // Follows the running job: commands the arm has executed (queue index) and the live pen position
@@ -684,7 +699,8 @@ async function drawPlotJob() {
 // Does a square of half-size h centred at c lie in the green zone (edges included)?
 function squareFits(z, c, h) {
   const pts = [[-h, -h], [-h, h], [h, h], [h, -h]].map(([a, b]) => ({ x: c.x + a, y: c.y + b }));
-  return pts.every(p => zoneHas(z, p.x, p.y)) && pts.every((p, i) => { const q = pts[(i + 1) % 4]; return segDist0(p.x, p.y, q.x, q.y) >= z.rIn; });
+  return pts.every(p => zoneHas(z, p.x, p.y)) && pts.every((p, i) => { const q = pts[(i + 1) % 4]; return segDist0(p.x, p.y, q.x, q.y) >= z.rIn; }) &&
+    (!z.pq || polyLineClear(z.pq, pts, true, z.margin || 0));
 }
 
 // Where to draw the 20 mm test square: beside the objects on the paper (as close as possible, so it is
@@ -762,7 +778,7 @@ function hoverRoundLoop(shape, margin = 3) {
     const a = path[i - 1], n = Math.ceil(Math.hypot(p.x - a.x, p.y - a.y) / 5);
     for (let k = 1; k < n; k++) if (!reach(a.x + (p.x - a.x) * k / n, a.y + (p.y - a.y) * k / n)) return false;
     return true;
-  });
+  }) && (typeof zoneLoopOk !== 'function' || zoneLoopOk(path));      // and inside the safe zone (part 54)
   const tries = [];
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const p of pts) { if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x; if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y; }
@@ -776,6 +792,10 @@ function hoverRoundLoop(shape, margin = 3) {
     const path = route(loop);
     if (ok(path)) return { kind, loop, path, z: zH, fellBack: kind !== shape };
   }
+  if (typeof zoneHoverLoop === 'function') {               // follow the safe zone's edge where the outline would leave it
+    const zl = zoneHoverLoop(outline(margin));
+    if (zl) { const path = route(zl); if (ok(path)) return { kind: 'zone', loop: zl, path, z: zH, fellBack: true }; }
+  }
   return null;
 }
 
@@ -786,13 +806,16 @@ async function hoverRound() {
   const shape = plotOpt('plot-frame') === 'outline' ? 'outline' : 'box';
   const r = hoverRoundLoop(shape);
   if (!r) return log('There is no way round these drawings that the arm can reach — move them a little away from the edges of the green zone.', 'err');
-  if (r.fellBack) log('The corners of the box are out of the arm\'s reach, so the round follows the outline of the drawings instead.', 'warn');
-  const start = S.cmd || S.pos, z = r.z, core = drawZone().rIn, cmds = [];
+  if (r.kind === 'zone') log('The round would leave the safe zone, so it follows the zone\'s edge there.', 'warn');
+  else if (r.fellBack) log('The corners of the box are out of the arm\'s reach, so the round follows the outline of the drawings instead.', 'warn');
+  const start = S.cmd || S.pos, z = r.z, core = drawZone().rIn, route = typeof zoneTravelFor === 'function' ? zoneTravelFor() : null;
+  let cmds = [];
   if (start.z < z - 0.5) cmds.push({ x: start.x, y: start.y, z, mode: 2 });
-  for (const w of arcWaypoints(start, r.path[0], core)) cmds.push({ x: w.x, y: w.y, z: Math.max(z, start.z), mode: 2 });
+  for (const w of route ? route(start, r.path[0]) : arcWaypoints(start, r.path[0], core)) cmds.push({ x: w.x, y: w.y, z: Math.max(z, start.z), mode: 2 });
   cmds.push({ x: r.path[0].x, y: r.path[0].y, z, mode: 2 });
   for (const p of r.path.slice(1)) cmds.push({ x: p.x, y: p.y, z, mode: 2 });
   cmds.push({ x: r.path[0].x, y: r.path[0].y, z: Math.max(z, S.limits.zUp), mode: 2 });   // lift at the end
+  if (typeof lockGate === 'function') { cmds = await lockGate('Hover round', cmds, start, 'move'); if (!cmds) return; }
   PL.frame = { path: r.path, until: Infinity };
   drawPlot();
   const lenMm = r.path.reduce((a, p, i) => a + (i ? Math.hypot(p.x - r.path[i - 1].x, p.y - r.path[i - 1].y) : 0), 0);
@@ -885,8 +908,9 @@ function toggleRecord() {
 
 async function playTake(i) {
   const t = S.takes[i];
-  const cmds = [{ x: t.pts[0].x, y: t.pts[0].y, z: S.limits.zUp }];
+  let cmds = [{ x: t.pts[0].x, y: t.pts[0].y, z: S.limits.zUp }];
   for (const p of t.pts) { const c = clampTarget(p.x, p.y, p.z); cmds.push({ x: c.x, y: c.y, z: c.z }); }
+  if (typeof lockGate === 'function') { cmds = await lockGate('Play ' + t.name, cmds, S.cmd || S.pos, 'move'); if (!cmds) return; }
   await runJob('Play ' + t.name, cmds, document.getElementById('rec-bar'));
 }
 
@@ -914,6 +938,7 @@ async function playLearned() {
     for (const p of m) { const c = clampTarget(p.x, p.y, p.z); cmds.push({ x: c.x, y: c.y, z: c.z }); }
     if (r < reps - 1 && pause > 0) cmds.push({ pause });
   }
+  if (typeof lockGate === 'function') { const c2 = await lockGate(`Learned movement ×${reps}`, cmds, S.cmd || S.pos, 'move'); if (!c2) return; cmds.splice(0, cmds.length, ...c2); }
   await runJob(`Learned movement ×${reps}`, cmds, document.getElementById('rec-bar'));
 }
 

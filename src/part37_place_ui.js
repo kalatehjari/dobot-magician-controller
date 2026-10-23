@@ -24,7 +24,7 @@ function syncPlaceInputs() {
   $pl('pl-sizeVal').textContent = `${pl.size.toFixed(0)} mm (${(sk.w * pl.size).toFixed(0)} × ${(sk.h * pl.size).toFixed(0)})`;
   $pl('pl-rotVal').textContent = `${+pl.angle.toFixed(1)}°`;
   const info = $pl('pl-info');
-  info.textContent = (o.placeOk === false ? 'Does not fit here — ' : '') + `${o.label}: ` +
+  info.textContent = (o.placeOk === false ? 'Does not fit here — ' : '') + `${bidiIsolate(o.label)}: ` +
     `centre X ${pl.cx.toFixed(0)}, Y ${pl.cy.toFixed(0)} mm · largest at this spot ${here.toFixed(0)} mm · largest anywhere ${anyMax.toFixed(0)} mm` +
     (z.fromModel ? '' : ' · green zone from the Setup limits (run Auto-calibrate for the real reach)');
   info.style.color = o.placeOk === false ? 'var(--err)' : '';
@@ -52,10 +52,16 @@ function afterResize() {
 function centrePlace() {
   const o = selObj(), pl = o && o.place; if (!pl || S.running) return;
   const z = drawZone(), P = objProbe(o), pad = plotPad(), xs = [];
-  for (let x = z.rIn; x <= z.rOut; x += 0.5) if (probeFits(P, x, 0, pl.size, z, pad)) xs.push(x);
+  const cy0 = z.pq ? zoneCentreY(z) : 0;                 // with a safe zone: across its middle
+  for (let x = z.rIn; x <= z.rOut; x += 0.5) if (probeFits(P, x, cy0, pl.size, z, pad)) xs.push(x);
   if (xs.length) {
     const mid = (xs[0] + xs[xs.length - 1]) / 2, x = xs.reduce((b, v) => (Math.abs(v - mid) < Math.abs(b - mid) ? v : b), xs[0]);
-    setPlaceFor(o, { ...pl, cx: x, cy: 0 });
+    setPlaceFor(o, { ...pl, cx: x, cy: cy0 });
+  } else if (z.pq) {
+    const t = objTargets(o)[1];
+    if (!t) return log('There is no room for it in the safe zone — make it smaller or the zone bigger.', 'err');
+    setPlaceFor(o, { ...pl, cx: t.cx, cy: t.cy, size: Math.min(pl.size, Math.floor(t.size * 0.999 * 10) / 10) });
+    if (o.place.size < pl.size) { log(`Made smaller (${o.place.size.toFixed(0)} mm) to fit in the safe zone.`, 'warn'); afterResize(); }
   } else {
     const t = objTargets(o)[0];
     if (!t) return log('There is no room on the centre line — check the pen heights or lower the margin.', 'err');

@@ -85,6 +85,32 @@ async function runSelfTest() {
     }
     out.text = !txBad.length ? `ok (${FONT_FAMILIES.length} fonts × ${TEXT_STYLES.length} styles)` : 'FAILED: ' + txBad.join(', ');
     if (txBad.length) out.errors.push('Text check failed');
+    // Persian text: letters join (seen meets lam-alef at the joining point), numbers and English inside stay left to right
+    try {
+      const Lfa = textLayout({ str: 'سلام دنیا ۱۴۰۵ (Dobot)', lang: 'fa' }), G = fontGlyphs(FA_FONT), seam = faLayoutLine(G, 'سلام', {}).glyphs;
+      const j = FONT_DATA[FA_FONT].join / FONT_CAP, x = seam[2].x;
+      const meets = g => g.strokes.some(s => [s[0], s[s.length - 1]].some(q => Math.abs(q.x + g.x - x) < 1e-9 && Math.abs(q.y - j) < 1e-9));
+      const order = faReorder([...'سلام 12 abc'], faBidiLevels([...'سلام 12 abc'].map(faBidiClass), [...'سلام 12 abc'])).join('');
+      out.persian = Lfa.strokes.length > 20 && !Lfa.missing.length && meets(seam[1]) && meets(seam[2]) && order === 'abc 12 مالس' ? `ok (${Lfa.strokes.length} pen lines)` : 'FAILED';
+    } catch (e) { out.persian = 'FAILED: ' + e.message; }
+    if (!out.persian.startsWith('ok')) out.errors.push('Persian text check failed');
+    // safe zone and safety lock: a drawing line across the notch of an L-shaped zone is caught, then trimmed to its parts inside
+    try {
+      const Z = { rIn: 190, rOut: 300, thMin: -80, thMax: 80, margin: 4 }, P = [{ x: 200, y: -80 }, { x: 290, y: -80 }, { x: 290, y: 80 }, { x: 250, y: 80 }, { x: 250, y: -20 }, { x: 200, y: -20 }];
+      const R = regionBuild(Z, P), floor = -76, start = { x: 270, y: -60, z: -50 };
+      const cmds = [{ x: 220, y: -50, z: -60, mode: 2 }, { x: 220, y: -50, z: -75, mode: 2 }, { kind: 'cp', x: 270, y: 60, z: -75, v: 30 }, { x: 270, y: 60, z: -60, mode: 2 }];
+      const before = lockCheckPath(cmds, start, R, floor), trimmed = lockTrimPath(cmds, start, R, floor, { mode: 'draw', zDown: -75, zUp: -60, route: regionRouter(R) });
+      out.zone = !polyCheck(P) && before.bad > 0 && lockCheckPath(trimmed, start, R, floor).ok ? `ok (${before.bad} move${before.bad === 1 ? '' : 's'} caught, the trimmed path passes)` : 'FAILED';
+    } catch (e) { out.zone = 'FAILED: ' + e.message; }
+    if (!out.zone.startsWith('ok')) out.errors.push('Safe zone / lock check failed');
+    // wireless: the Wi-Fi set-up messages encode and read back exactly
+    try {
+      const fr = wifiSetupFrames({ ssid: 'Lab net', password: 'pass-1234', dhcp: false, ip: '192.168.1.50', netmask: '255.255.255.0', gateway: '192.168.1.1' });
+      const back = parseFrames(new Uint8Array(fr.flatMap(([id, c, q]) => [...encodeFrame(id, c, q)]))).frames;
+      const same = back.length === fr.length && back.every((f, i) => f.id === fr[i][0] && f.params.length === fr[i][2].length && f.params.every((b, k) => b === fr[i][2][k]));
+      out.wireless = same ? `ok (${fr.length} Wi-Fi set-up messages)` : 'FAILED';
+    } catch (e) { out.wireless = 'FAILED: ' + e.message; }
+    if (!out.wireless.startsWith('ok')) out.errors.push('Wireless check failed');
     // several objects: a second drawing finds free room beside the first (the paper itself is not touched)
     const sqO = [[{ x: 0, y: 0 }, { x: 40, y: 0 }, { x: 40, y: 40 }, { x: 0, y: 40 }, { x: 0, y: 0 }]];
     const oA = newObject('drawing', prepareSketch(sqO), 'self-test A'), oB = newObject('drawing', prepareSketch(sqO), 'self-test B');
@@ -117,7 +143,7 @@ async function runSelfTest() {
   }
   out.ok = !out.errors.length && out.frames > 0 && Math.abs(out.beatBpm - 120) < 2;
   const summary = `${out.ok ? 'All good' : 'Problems found'} — face: ${out.models.face}; hands: ${out.models.gesture}; body: ${out.models.pose}; ` +
-    `camera ${out.fps} fps; beat tracker ${out.beatBpm} BPM (expected 120); picture tracer ${out.tracer}; geometry ${out.geometry}; placement ${out.placement}; smooth motion ${out.smooth}; library ${out.library}; shading ${out.shading}; text ${out.text}; objects ${out.objects}; 3D printing ${out.print3d}; ` +
+    `camera ${out.fps} fps; beat tracker ${out.beatBpm} BPM (expected 120); picture tracer ${out.tracer}; geometry ${out.geometry}; placement ${out.placement}; smooth motion ${out.smooth}; library ${out.library}; shading ${out.shading}; text ${out.text}; Persian ${out.persian}; safe zone ${out.zone}; wireless ${out.wireless}; objects ${out.objects}; 3D printing ${out.print3d}; ` +
     `USB serial ${out.serial ? 'available' : 'NOT available'}.`;
   if (res) res.textContent = summary;
   log('Self-test: ' + summary, out.ok ? 'ok' : 'err');

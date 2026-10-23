@@ -28,6 +28,7 @@ function streamRelease(owner) {
 setInterval(async () => {
   if (M.sending || M.seqBusy || !M.target || !smartCanMove()) return;
   let t = clampTarget(M.target.x, M.target.y, M.target.z);
+  if (typeof lockFollowTarget === 'function') t = lockFollowTarget(M.owner || 'smart', t);   // safety lock (part 55)
   if (typeof followGlide === 'function' && followGlide()) {        // smoothed, continuous following
     const db = M.opts.deadband ?? M.deadband;
     if (!GL.target || GL.owner !== M.owner || Math.hypot(t.x - GL.target.x, t.y - GL.target.y, t.z - GL.target.z) >= db) glideSet(M.owner, t);
@@ -39,6 +40,7 @@ setInterval(async () => {
   if (d > M.maxStep) {
     const k = M.maxStep / d;
     t = clampTarget(from.x + (t.x - from.x) * k, from.y + (t.y - from.y) * k, from.z + (t.z - from.z) * k);
+    if (typeof lockFollowTarget === 'function') t = lockFollowTarget(M.owner || 'smart', t, true);
   }
   M.sending = true;
   try {
@@ -53,7 +55,8 @@ async function sendNow(p, mode = 1) {
   M.sending = true;
   try {
     if (!(await queueRoom(2))) return false;
-    const t = clampTarget(p.x, p.y, p.z);
+    let t = clampTarget(p.x, p.y, p.z);
+    if (typeof lockFollowTarget === 'function') t = lockFollowTarget(M.owner || 'dance', t);
     await S.dev.ptp(t.x, t.y, t.z, p.r || 0, mode);
     S.cmd = t;
     return true;
@@ -72,7 +75,8 @@ async function playSequence(frames, label) {
     for (const f of frames) {
       if (gen !== M.seqGen || !smartCanMove()) return false;
       while (!(await queueRoom(2))) { await sleep(15); if (gen !== M.seqGen) return false; }
-      const t = clampTarget(f.x, f.y, f.z);
+      let t = clampTarget(f.x, f.y, f.z);
+      if (typeof lockFollowTarget === 'function') t = lockFollowTarget('reactions', t);
       await S.dev.ptp(t.x, t.y, t.z, f.r || 0, 1);
       S.cmd = t;
       await sleep(f.wait ?? 150);

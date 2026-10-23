@@ -276,6 +276,9 @@ function orientStrokes(strokes, quarterTurns, mirror) {
 // keeps its height; pen-down drawing uses continuous-path (CP) moves when opts.cp is set, so the arm
 // does not stop at every point. Very short drawing segments are merged (opts.minSeg mm).
 // opts.core: radius (mm) the pen-up travel must stay outside; longer hops follow the arc around it.
+// opts.route(a, b): corners pen-up travel from a to b must pass (the safe zone, part 54) — used
+// instead of the arc round the base when set.
+const travelWays = (a, b, opts) => opts.route ? opts.route(a, b) : opts.core ? arcWaypoints(a, b, opts.core) : [];
 function plotCommands(ops, L, start, opts = {}) {
   if (opts.cp && opts.continuous) return plotCommandsContinuous(ops, L, start, opts);
   const cmds = [], zU = L.zUp, zD = L.zDown, minSeg = opts.minSeg ?? 0.4;
@@ -285,7 +288,7 @@ function plotCommands(ops, L, start, opts = {}) {
     const op = ops[i], next = ops[i + 1];
     const same = prev && Math.hypot(op.x - prev.x, op.y - prev.y) < 0.01;
     if (!op.pen) {
-      if (opts.core && prev && !prev.pen) for (const w of arcWaypoints(prev, op, opts.core)) cmds.push({ x: w.x, y: w.y, z: zU, mode: 2 });
+      if (prev && !prev.pen) for (const w of travelWays(prev, op, opts)) cmds.push({ x: w.x, y: w.y, z: zU, mode: 2 });
       cmds.push({ x: op.x, y: op.y, z: zU, mode: 2 });                    // lift or travel
       lastDrawn = null;
     } else if (prev && !prev.pen && same) {
@@ -319,8 +322,8 @@ function plotCommandsContinuous(ops, L, start, opts = {}) {
     else cur = null;
   }
   if (!strokes.length) return cmds;
-  const flyTo = (from, s) => {                       // long jump: straight move above the paper
-    for (const w of arcWaypoints(from, s, core)) PTP(w.x, w.y, zU);
+  const flyTo = (from, s, ways) => {                 // long jump: straight move above the paper
+    for (const w of ways || travelWays(from, s, opts)) PTP(w.x, w.y, zU);
     PTP(s.x, s.y, zU);
     CP(s.x, s.y, zD);
   };
@@ -343,14 +346,14 @@ function plotCommandsContinuous(ops, L, start, opts = {}) {
     }
     const next = strokes[k + 1];
     if (!next) { CP(last.x, last.y, zU); break; }
-    const s = next[0], d = Math.hypot(s.x - last.x, s.y - last.y);
-    if (d <= hopMax) {
+    const s = next[0], d = Math.hypot(s.x - last.x, s.y - last.y), ways = opts.route ? opts.route(last, s) : null;
+    if (d <= hopMax && !(ways && ways.length)) {
       for (const q of hopPath(last, s, zD, hopHeight(d, hopMin, zU - zD), core)) CP(q.x, q.y, q.z);
-    } else if (arcWaypoints(last, s, core).length) {   // a long jump around the base: one continuous arc at full height
+    } else if (!ways && arcWaypoints(last, s, core).length) {   // a long jump around the base: one continuous arc at full height
       for (const q of hopPath(last, s, zD, zU - zD, core)) CP(q.x, q.y, q.z);
     } else {
       CP(last.x, last.y, zU);
-      flyTo(last, s);
+      flyTo(last, s, ways);                                // round inside the safe zone when it is in the way
     }
   }
   return cmds;

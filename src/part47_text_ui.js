@@ -43,7 +43,7 @@ function textApply(o, patch) {
 }
 // After a resize: made-up bold keeps its second line 0.35 mm to the side at the new size.
 function textRelayout(o) {
-  if (o && o.kind === 'text' && fontResolve(o.text.family, o.text.style).fakeBold) textApply(o, { height: o.text.height });
+  if (o && o.kind === 'text' && textFont(o.text).fakeBold) textApply(o, { height: o.text.height });
 }
 
 // The fields → text settings.
@@ -58,22 +58,39 @@ function txFields() {
     align: $tx('tx-align').value,
     spacing: Math.min(2, Math.max(-0.3, num('tx-spacing', 0) / 100)),
     lineGap: Math.min(4, Math.max(0.5, num('tx-lines', 1))),
+    lang: $tx('tx-fa').checked ? 'fa' : 'en',
+    faDigits: $tx('tx-fadigits').checked,
   };
 }
 
 function txInfo() {
-  const o = selText(), t = o ? o.text : TX.tpl, fr = fontResolve(t.family, t.style), bits = [];
+  const o = selText(), t = o ? o.text : TX.tpl, fr = textFont(t), bits = [];
   const missing = o ? o.missing || [] : textLayout(t).missing;
-  if (o) bits.push(o.textEmpty ? 'Type some text — the selected text is empty, so its old lines are kept.' : `Editing “${o.label}” — changes show on the map straight away. Add text makes another one.`);
+  if (o) bits.push(o.textEmpty ? 'Type some text — the selected text is empty, so its old lines are kept.' : `Editing “${bidiIsolate(o.label)}” — changes show on the map straight away. Add text makes another one.`);
   else bits.push(selObj() ? 'Add text puts new text on the paper (the selected object is a drawing).' : 'Type, choose a font, then Add text. Click text on the map to change it later.');
   if (fr.fakeBold || fr.fakeItalic) bits.push(`${fr.family.name} has no ${[fr.fakeBold && 'bold', fr.fakeItalic && 'italic'].filter(Boolean).join(' or ')} letters, so ${[fr.fakeBold && 'bold adds a second pen line beside each line', fr.fakeItalic && 'italic slants the letters'].filter(Boolean).join(' and ')}.`);
+  if (t.lang !== 'fa' && /[\u0600-\u06FF]/.test(t.str || '')) bits.push('For Persian text, switch Persian on.');
   if (missing.length) bits.push(`Not in this font (left out): ${missing.slice(0, 12).join(' ')}${missing.length > 12 ? ' …' : ''}`);
   $tx('tx-info').textContent = bits.join(' ');
   $tx('tx-info').style.color = missing.length || (o && o.textEmpty) ? 'var(--warn)' : '';
 }
 
-function txMarkFont(key) {
-  document.querySelectorAll('#tx-fonts .tx-font').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.key === key)));
+function txMarkFont(key, t = selText() ? selText().text : TX.tpl) {
+  const k = t.lang === 'fa' ? 'persian' : key;
+  document.querySelectorAll('#tx-fonts .tx-font').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.key === k)));
+}
+
+// Persian on or off: right-to-left text box, the Persian font in place of the others, no italic.
+function txLangUI(t) {
+  const fa = t.lang === 'fa', ta = $tx('tx-text');
+  $tx('tx-fa').checked = fa;
+  $tx('tx-fadigits').checked = t.faDigits !== false;
+  $tx('tx-fadigits-wrap').hidden = !fa;
+  ta.dir = fa ? 'rtl' : 'ltr';
+  if (fa) ta.lang = 'fa'; else ta.removeAttribute('lang');
+  ta.placeholder = fa ? 'متن را بنویسید…' : 'Type the text to draw…';
+  document.querySelectorAll('#tx-fonts .tx-font').forEach(b => { b.hidden = fa !== (b.dataset.key === 'persian'); });
+  for (const op of $tx('tx-style').options) op.disabled = fa && op.value.includes('italic');
 }
 
 // Fields show the selected text, or the settings for new text.
@@ -87,10 +104,11 @@ function syncTextUI() {
   set('tx-align', t.align);
   set('tx-spacing', Math.round((t.spacing || 0) * 100));
   set('tx-lines', +(t.lineGap || 1).toFixed(2));
-  txMarkFont(t.family);
+  txLangUI(t);
+  txMarkFont(t.family, t);
   $tx('btnTextAdd').disabled = S.running;
   $tx('textCard').classList.toggle('editing', !!o);
-  $tx('tx-mode').textContent = o ? `editing ${o.label}` : 'new text';
+  $tx('tx-mode').textContent = o ? `editing ${bidiIsolate(o.label)}` : 'new text';
   txInfo();
 }
 
@@ -99,7 +117,7 @@ function txChanged(patch, delay = 0) {
   const o = selText();
   TX.tpl = { ...TX.tpl, ...patch };
   txSave();
-  if (!o || S.running) { txInfo(); txMarkFont(TX.tpl.family); return; }
+  if (!o || S.running) { txInfo(); txMarkFont(TX.tpl.family, TX.tpl); return; }
   clearTimeout(TX.timer);
   const run = () => {
     const tpatch = { ...patch }; delete tpatch.angle;
@@ -107,7 +125,7 @@ function txChanged(patch, delay = 0) {
     if ('angle' in patch) applyWant({ ...o.place, angle: normAngle(patch.angle) });
     buildPlot({ quiet: true });
     if (typeof renderObjectList === 'function') renderObjectList();
-    txInfo(); txMarkFont(o.text.family);
+    txInfo(); txMarkFont(o.text.family, o.text);
   };
   if (delay) TX.timer = setTimeout(run, delay); else run();
 }
@@ -117,12 +135,12 @@ function addText() {
   const t = txFields();
   if (!String(t.str).trim()) { $tx('tx-text').focus(); return log('Type some text first.', 'warn'); }
   const lay = textLayout(t);
-  if (!lay.strokes.length) return log(`None of these characters are in ${fontFamily(t.family).name}.`, 'warn');
+  if (!lay.strokes.length) return log(`None of these characters are in ${textFont(t).family.name}.${t.lang !== 'fa' && /[\u0600-\u06FF]/.test(t.str) ? ' For Persian text, switch Persian on.' : ''}`, 'warn');
   TX.tpl = { ...TX.tpl, ...t }; txSave();
   const o = newObject('text', textSketch(lay), textLabel(t.str), { text: { ...t }, missing: lay.missing });
   addObject(o);
   if (o.text.height < t.height - 0.05) log(`Text made smaller (${o.text.height.toFixed(1)} mm letters) so it fits in the green zone.`, 'warn');
-  log(`Text added: “${o.label}” in ${fontFamily(t.family).name}, ${o.text.height.toFixed(1)} mm letters.${lay.missing.length ? ' Left out (not in this font): ' + lay.missing.join(' ') : ''}`, 'ok');
+  log(`Text added: “${bidiIsolate(o.label)}” in ${textFont(t).family.name}, ${o.text.height.toFixed(1)} mm letters.${lay.missing.length ? ' Left out (not in this font): ' + lay.missing.join(' ') : ''}`, 'ok');
 }
 
 // Font buttons, each showing its name in its own letters.
@@ -144,6 +162,19 @@ function txBuildFonts() {
     b.onclick = () => txChanged({ family: f.key });
     frag.appendChild(b);
   }
+  {                                                       // the Persian font (shown while Persian is on)
+    const lay = textLayout({ str: 'فارسی', lang: 'fa', align: 'left' });
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const s of lay.strokes) for (const p of s) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); }
+    const d = lay.strokes.map(s => 'M' + s.map(p => `${(p.x * 100).toFixed(0)} ${(p.y * 100).toFixed(0)}`).join('L')).join('');
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'tx-font'; b.dataset.key = 'persian'; b.hidden = true;
+    b.title = 'Vazir — single-line Persian font made from Vazirmatn (styles: regular, bold)';
+    b.setAttribute('aria-label', 'Vazir (Persian)');
+    const pad = 12, vb = `${(x0 * 100 - pad).toFixed(0)} ${(y0 * 100 - pad).toFixed(0)} ${((x1 - x0) * 100 + 2 * pad).toFixed(0)} ${((y1 - y0) * 100 + 2 * pad).toFixed(0)}`;
+    b.innerHTML = `<svg viewBox="${vb}" aria-hidden="true" preserveAspectRatio="xMidYMid meet"><path d="${d}"/></svg>`;
+    frag.appendChild(b);
+  }
   box.appendChild(frag);
   const sel = $tx('tx-style');
   for (const [k, name] of TEXT_STYLES) { const op = document.createElement('option'); op.value = k; op.textContent = name; sel.appendChild(op); }
@@ -158,6 +189,8 @@ function txCredits() {
   add('p', 'EMS fonts (Readability, Nixish, Tech, Osmotron, Felix, Allure, Elfin): single-line versions of open fonts, licensed under the SIL Open Font License 1.1. Converted here to pen lines (coordinates rounded) — that copy is under the same licence.');
   for (const [k, meta] of Object.entries(FONT_CREDITS.ems)) add('pre', meta, 'tx-lic');
   add('pre', FONT_CREDITS.ofl, 'tx-lic');
+  add('p', 'Vazir (Persian): the centre lines of Vazirmatn (Round Dots, Thin) by Saber Rastikerdar and the Vazirmatn Project Authors, traced into pen lines here; licensed under the SIL Open Font License 1.1 — that copy is under the same licence:');
+  add('pre', FA_FONT_LICENCE, 'tx-lic');
 }
 
 /* ----- wiring ----- */
@@ -181,6 +214,18 @@ for (const [id, key, conv, lo, hi, msg] of [
   el.addEventListener('blur', () => { delete el.dataset.typing; });
 }
 $tx('btnTextAdd').onclick = addText;
+$tx('tx-fa').addEventListener('change', () => {
+  const fa = $tx('tx-fa').checked, o = selText(), t = o ? o.text : TX.tpl, patch = { lang: fa ? 'fa' : 'en' };
+  if (fa ? t.align === 'left' : t.align === 'right') patch.align = fa ? 'right' : 'left';    // the start of a line swaps sides
+  if (fa && /italic/.test(t.style)) patch.style = t.style === 'bolditalic' ? 'bold' : 'regular';
+  txChanged(patch);
+  syncTextUI();
+  $tx('tx-text').focus({ preventScroll: true });
+});
+$tx('tx-fadigits').addEventListener('change', () => txChanged({ faDigits: $tx('tx-fadigits').checked }));
+// Switches: the browser's own (<input type=checkbox switch>, Safari), or else the checkbox drawn as a
+// switch and announced as one.
+if (!('switch' in HTMLInputElement.prototype)) for (const el of document.querySelectorAll('input[type="checkbox"][switch]')) { el.setAttribute('role', 'switch'); el.classList.add('sw-fb'); }
 $tx('tx-credits').addEventListener('toggle', ev => { if (ev.target.open) txCredits(); });
 
 txLoad();

@@ -17,7 +17,7 @@ function openAutoCal() {
 }
 
 function closeAutoCal() {
-  AC.open = false;
+  AC.open = false; AC.reset = false;
   document.getElementById('autocal').hidden = true;
 }
 
@@ -40,6 +40,8 @@ async function acMoveAndWait(x, y, z) {
 function applyAutoLimits(L, penSet) {
   S.limits = { ...S.limits, ...L, penSet };
   writeSetup(); saveSettings(); drawAll();
+  if (typeof phRender === 'function') phRender();
+  if (typeof lockZoneChanged === 'function') lockZoneChanged();
 }
 
 async function autoCalMeasure() {
@@ -160,6 +162,10 @@ function renderAutoCal() {
       </div>
       ${AC.msg ? `<div class="warnbox">${AC.msg}</div>` : ''}
       <div class="row"><button class="primary" data-ac="paper">This is the paper</button><button class="ghost" data-ac="close">Finish later</button></div>`;
+  } else if (AC.step === 'done' && AC.reset) {
+    html = `<h3>Pen height set</h3><p class="muted">The pen touches the paper at <b>${L.zDown} mm</b> (it lifts to ${L.zUp} mm between lines). The green zone, the drawings on the paper and the safety lock now use this height.</p>
+      <div class="row"><input id="ac-phName" type="text" maxlength="40" placeholder="Name, e.g. Board 18 mm" aria-label="Name for this paper height"><button data-ac="phsave">Save this height</button></div>
+      <div class="row"><button class="primary" data-ac="test">Draw a test square</button><button data-ac="close">Close</button></div>`;
   } else if (AC.step === 'done') {
     html = `<h3>Calibrated</h3>${acSummary()}
       <div class="hint">Every move is now checked against the arm's real reach at its height, so drawings stay where the arm can go.</div>
@@ -181,6 +187,7 @@ document.getElementById('autocalBody').addEventListener('click', ev => {
   else if (a === 'keep') { closeAutoCal(); log('Using the saved calibration.', 'ok'); }
   else if (a === 'manual') { closeAutoCal(); openWizard(); }
   else if (a === 'paper') acSetPaper();
+  else if (a === 'phsave') { const n = document.getElementById('ac-phName'); document.getElementById('ph-name').value = n ? n.value : ''; if (typeof phSaveCurrent === 'function') phSaveCurrent(); }
   else if (a === 'test') { closeAutoCal(); showTab('plot'); testSquare(); }
   else if (a === 'close') closeAutoCal();
 });

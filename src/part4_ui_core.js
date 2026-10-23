@@ -38,7 +38,7 @@ function setConnected(on) {
   const pill = document.getElementById('pill');
   const btn = document.getElementById('btnConnect');
   if (on) {
-    pill.textContent = S.sim ? 'Simulator' : 'Connected';
+    pill.textContent = S.sim ? 'Simulator' : S.link && S.link !== 'USB' ? `Connected · ${S.link}` : 'Connected';
     pill.className = 'pill ' + (S.sim ? 'sim' : 'ok');
     btn.textContent = 'Disconnect';
   } else {
@@ -118,18 +118,23 @@ async function connectSerial() {
   const io = new SerialIO(port);
   await io.open();
   S.dev = new Dobot(io);
-  S.sim = false;
+  S.sim = false; S.link = 'USB';
 }
 
 async function connectSim() {
   S.dev = new Dobot(new SimIO());
-  S.sim = true;
+  S.sim = true; S.link = 'Simulator';
 }
 
-async function connectFlow(simulate) {
+// mode: false / 'usb' (USB cable), true / 'sim' (simulator), 'ble' (Bluetooth module), 'wifi' (Wi-Fi module via the bridge).
+async function connectFlow(mode) {
   readSetup();
+  const simulate = mode === true || mode === 'sim';
   try {
-    if (simulate) await connectSim(); else await connectSerial();
+    if (simulate) await connectSim();
+    else if (mode === 'ble') await connectBle();
+    else if (mode === 'wifi') await connectWifi();
+    else await connectSerial();
     await S.dev.init();
     S.pos = await S.dev.pose();
     S.cmd = { ...S.pos };
@@ -138,7 +143,7 @@ async function connectFlow(simulate) {
     S.alarm = await S.dev.alarms();
     renderAlarm();
     if (S.alarm.length) log('Alarm present: ' + alarmText(S.alarm) + '. Use the red bar to clear it.', 'err');
-    log(simulate ? 'Simulator started — no hardware is moved.' : 'Connected to Magician over USB.', 'ok');
+    log(simulate ? 'Simulator started — no hardware is moved.' : `Connected to Magician over ${S.link}.`, 'ok');
     openAutoCal();   // centre the arm, measure it, then the user sets the pen height
   } catch (e) {
     S.dev = null;
@@ -280,7 +285,8 @@ function setLiveButton() {
 setInterval(async () => {
   if (!S.dev || !S.live || !S.target || S.sending || S.running || S.alarm.length) return;
   if (typeof followGlide === 'function' && followGlide()) {
-    const t = clampTarget(S.target.x, S.target.y, S.target.z);
+    let t = clampTarget(S.target.x, S.target.y, S.target.z);
+    if (typeof lockFollowTarget === 'function') t = lockFollowTarget('mouse', t);
     if (!GL.target || Math.hypot(t.x - GL.target.x, t.y - GL.target.y, t.z - GL.target.z) > 0.3 || GL.owner !== 'mouse') glideSet('mouse', t);
     return;
   }
@@ -290,7 +296,8 @@ setInterval(async () => {
   try {
     const cur = await S.dev.queueIndex();
     if (((S.dev.lastAccepted - cur) | 0) < 2) {
-      const t = clampTarget(S.target.x, S.target.y, S.target.z);
+      let t = clampTarget(S.target.x, S.target.y, S.target.z);
+      if (typeof lockFollowTarget === 'function') t = lockFollowTarget('mouse', t);   // safety lock: hold at the boundary
       await S.dev.ptp(t.x, t.y, t.z, 0, 2);
       S.cmd = t; S.lastKey = key;
     }
@@ -324,7 +331,7 @@ mouseCv.addEventListener('wheel', async ev => {
   ev.preventDefault();
   const base = S.cmd || S.pos;
   const dz = ev.deltaY < 0 ? 1 : -1;
-  try { await moveTo(base.x, base.y, base.z + dz); } catch (e) { log(e.message, 'err'); }
+  try { await moveTo(base.x, base.y, base.z + dz, { small: true }); } catch (e) { log(e.message, 'err'); }
 }, { passive: false });
 
 document.getElementById('btnLive').onclick = () => {
@@ -348,14 +355,14 @@ document.addEventListener('keydown', async ev => {
   if (S.nudgeBusy || !S.dev) return;
   S.nudgeBusy = true;
   const base = S.cmd || S.pos;
-  try { await moveTo(base.x + d.x, base.y + d.y, base.z + d.z); }
+  try { await moveTo(base.x + d.x, base.y + d.y, base.z + d.z, { small: true }); }
   catch (e) { log(e.message, 'err'); }
   S.nudgeBusy = false;
 });
 
 document.getElementById('btnPenUp').onclick = () => withBase(b => moveTo(b.x, b.y, S.limits.zUp));
 document.getElementById('btnPenDown').onclick = () => withBase(b => moveTo(b.x, b.y, S.limits.zDown));
-document.getElementById('btnHome').onclick = () => moveTo(S.limits.homeX, S.limits.homeY, S.limits.homeZ).catch(e => log(e.message, 'err'));
+document.getElementById('btnHome').onclick = () => moveTo(S.limits.homeX, S.limits.homeY, S.limits.homeZ, { exempt: true }).catch(e => log(e.message, 'err'));
 document.getElementById('zSlider').oninput = e => document.getElementById('zVal').textContent = e.target.value;
 document.getElementById('zSlider').onchange = e => withBase(b => moveTo(b.x, b.y, parseFloat(e.target.value)));
 document.getElementById('btnSuction').onclick = async e => {

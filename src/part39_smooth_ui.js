@@ -68,7 +68,8 @@ setInterval(async () => {
     const key = `${lim.vMax}|${lim.aMax}`;
     if (GL.paramsKey !== key) { await S.dev.setCPParams(lim.aMax, lim.vMax, lim.aMax); GL.paramsKey = key; }
     if (await queueRoom(3)) {
-      const c = clampTarget(p.x, p.y, p.z);
+      let c = clampTarget(p.x, p.y, p.z);
+      if (typeof lockFollowTarget === 'function') c = lockFollowTarget(GL.owner || 'glide', c, true);   // the glide's own steps: just keep inside
       await S.dev.cp(c.x, c.y, c.z, lim.vMax);
       S.cmd = c; GL.last = c; GL.sentAt = now;
       GL.sent = (GL.sent || 0) + 1;

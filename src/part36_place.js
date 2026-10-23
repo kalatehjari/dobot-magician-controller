@@ -76,7 +76,10 @@ function zoneHas(z, x, y) {
   const r = Math.hypot(x, y), th = Math.atan2(y, x) / RAD;
   return r >= z.rIn && r <= z.rOut && th >= z.thMin && th <= z.thMax;
 }
-const zoneKey = z => [z.rIn, z.rOut, z.thMin, z.thMax].map(v => v.toFixed(2)).join('|');
+const zoneKey = z => [z.rIn, z.rOut, z.thMin, z.thMax].map(v => v.toFixed(2)).join('|') + (z.pq ? '|' + (z.margin || 0) + '|' + z.polyKey : '');
+// Clearance from the edges of the safe-zone polygon (part 53): the margin, the simplification
+// tolerance and the stand-in lines' error at this size.
+const polyGap = (P, s, z, pad) => (z.margin || 0) + pad + P.eps * s;
 
 // The drawing turned for one rotation (size 1, centre 0), reused while only position and size change.
 // Lines are cut into short chunks with their own boxes, so the inner-edge check skips everything
@@ -128,7 +131,7 @@ function probeFits(P, cx, cy, s, z, pad = 0) {
     if (x * x + y * y > Ro2) return false;
     if (d0x * y - d0y * x < -1e-9 || d1x * y - d1y * x > 1e-9) return false;
   }
-  return innerClear(P, cx, cy, s, z, pad);
+  return innerClear(P, cx, cy, s, z, pad) && (!z.pq || polyClear(P, cx, cy, s, z.pq, polyGap(P, s, z, pad)));
 }
 
 // Upper bound on the size at a centre, from the hull points: outer edge and side limits (exact), and
@@ -173,9 +176,14 @@ function hullDist0(P, cx, cy, s) {
 // one of its lines crosses that area; so the base area is kept outside the drawing's outline, which
 // (unlike the lines alone) only ever gets closer to the base as the drawing grows.
 function maxSizeAt(P, cx, cy, z, pad = 0) {
-  const ub = Math.min(hullSizeBound(P, cx, cy, z, pad), 2000);
+  let ub = Math.min(hullSizeBound(P, cx, cy, z, pad), 2000);
   if (!(ub > 0)) return 0;
   if (!innerClear(P, cx, cy, 0, z, pad)) return 0;
+  if (z.pq) {
+    if (!polyClear(P, cx, cy, 0, z.pq, polyGap(P, 0, z, pad))) return 0;
+    ub = Math.min(ub, polyBoxBound(P, cx, cy, z.pq));
+    if (!(ub > 0)) return 0;
+  }
   let s = ub;
   if (!innerClear(P, cx, cy, ub, z, pad)) {
     let lo = 0, hi = ub;
@@ -186,13 +194,33 @@ function maxSizeAt(P, cx, cy, z, pad = 0) {
     s = lo;
   }
   const R = t => z.rIn + P.eps * t + pad;
-  if (hullDist0(P, cx, cy, s) >= R(s)) return s;
-  let lo = 0, hi = s;
-  for (let it = 0; it < 30 && hi - lo > 0.02; it++) {
-    const m = (lo + hi) / 2;
-    if (hullDist0(P, cx, cy, m) >= R(m) && innerClear(P, cx, cy, m, z, pad)) lo = m; else hi = m;
+  if (hullDist0(P, cx, cy, s) < R(s)) {
+    let lo = 0, hi = s;
+    for (let it = 0; it < 30 && hi - lo > 0.02; it++) {
+      const m = (lo + hi) / 2;
+      if (hullDist0(P, cx, cy, m) >= R(m) && innerClear(P, cx, cy, m, z, pad)) lo = m; else hi = m;
+    }
+    s = lo;
   }
-  return lo;
+  if (z.pq && s > 0 && !polyClear(P, cx, cy, s, z.pq, polyGap(P, s, z, pad))) {   // the safe zone: the largest size that fits it
+    let lo = 0, hi = s;
+    for (let it = 0; it < 30 && hi - lo > 0.02; it++) {
+      const m = (lo + hi) / 2;
+      if (polyClear(P, cx, cy, m, z.pq, polyGap(P, m, z, pad)) && hullDist0(P, cx, cy, m) >= R(m) && innerClear(P, cx, cy, m, z, pad)) lo = m; else hi = m;
+    }
+    s = lo;
+  }
+  return s;
+}
+
+// Upper bound on the size from the safe zone's box: the outline's corners are points of the drawing.
+function polyBoxBound(P, cx, cy, pp) {
+  let s = Infinity;
+  for (const u of P.hull) {
+    if (u.x > 1e-12) s = Math.min(s, (pp.maxX - cx) / u.x); else if (u.x < -1e-12) s = Math.min(s, (pp.minX - cx) / u.x);
+    if (u.y > 1e-12) s = Math.min(s, (pp.maxY - cy) / u.y); else if (u.y < -1e-12) s = Math.min(s, (pp.minY - cy) / u.y);
+  }
+  return Number.isFinite(s) ? Math.max(0, s) : 2000;
 }
 
 // Largest size for this rotation, and where it goes. centreLine keeps the centre on the arm's
@@ -205,11 +233,24 @@ function bestPlacement(P, z, opts = {}) {
     for (let a = 3; a <= z.thMax - 1; a += 3) phis.push(a);
     for (let a = -3; a >= z.thMin + 1; a -= 3) phis.push(a);
   }
-  const cands = [];
-  for (const ph of phis) for (let i = 0; i <= nR; i++) {
-    const r = z.rIn + i * rs, cx = r * Math.cos(ph * RAD), cy = r * Math.sin(ph * RAD);
-    const ub = hullSizeBound(P, cx, cy, z, pad);
+  const cands = [], pq = z.pq;
+  const add = (cx, cy, ph) => {
+    if (pq && !polyHas(pq, cx, cy)) return;
+    let ub = hullSizeBound(P, cx, cy, z, pad);
+    if (pq && ub > 0) ub = Math.min(ub, polyBoxBound(P, cx, cy, pq));
     if (ub > 0) cands.push({ cx, cy, ub, ph });
+  };
+  for (const ph of phis) for (let i = 0; i <= nR; i++) {
+    const r = z.rIn + i * rs;
+    add(r * Math.cos(ph * RAD), r * Math.sin(ph * RAD), ph);
+  }
+  if (pq) {                                  // a grid over the safe zone, so a small zone has candidates too
+    const n = 14, dx = (pq.maxX - pq.minX) / n, dy = (pq.maxY - pq.minY) / n;
+    for (let i = 0; i <= n; i++) {
+      const cx = pq.minX + i * dx;
+      if (opts.centreLine) { add(cx, 0, 0); continue; }
+      for (let j = 0; j <= n; j++) { const cy = pq.minY + j * dy; add(cx, cy, Math.atan2(cy, cx) / RAD); }
+    }
   }
   cands.sort((a, b) => b.ub - a.ub || Math.abs(a.ph) - Math.abs(b.ph));
   let best = null;

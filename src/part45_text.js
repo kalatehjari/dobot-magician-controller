@@ -22,7 +22,7 @@ const FONT_FAMILIES = [
   { key: 'gothicit', name: 'Gothic Italian', files: { regular: 'gothicita' } },
 ];
 const TEXT_STYLES = [['regular', 'Regular'], ['bold', 'Bold'], ['italic', 'Italic'], ['bolditalic', 'Bold italic']];
-const TEXT_DEFAULTS = { str: 'Hello', family: 'sans', style: 'regular', height: 10, align: 'center', spacing: 0, lineGap: 1 };
+const TEXT_DEFAULTS = { str: 'Hello', family: 'sans', style: 'regular', height: 10, align: 'center', spacing: 0, lineGap: 1, lang: 'en', faDigits: true };
 const TEXT_SLANT = 12;              // degrees, for made-up italics
 const TEXT_BOLD_MM = 0.35;          // second pen line this far to the side, for made-up bold
 const TEXT_LINE_PITCH = 1.6;        // baseline to baseline at line spacing 1, in cap heights
@@ -82,6 +82,9 @@ function fontResolve(familyKey, style) {
   }
   return { file, fakeBold: fakeB, fakeItalic: fakeI, family: fam };
 }
+
+// The font file and made-up effects for text settings: Persian text (lang 'fa') has its own font (part58).
+function textFont(t) { return t.lang === 'fa' && typeof faResolve === 'function' ? faResolve(t.style) : fontResolve(t.family, t.style); }
 
 // Typographic characters the fonts lack, drawn with ones they have.
 const TEXT_SUBST = { '‘': "'", '’': "'", '‚': ',', '′': "'", '″': '"', '„': '"', '…': '...', '−': '-', '‐': '-', '‑': '-', '‒': '-', ' ': ' ', ' ': ' ', ' ': ' ', '•': '·', 'ı': 'i', '“': '"', '”': '"', '«': '<<', '»': '>>', '‹': '<', '›': '>', '–': '-', '—': '--', 'Đ': 'Ð' };
@@ -166,25 +169,32 @@ function textGlyph(G, ch, spaceAdv) {
 }
 
 // Text → pen lines. p: { str, family, style, height (mm; for made-up bold), align, spacing (extra
-// space between letters, cap heights), lineGap (line spacing, 1 = normal) }.
+// space between letters, cap heights), lineGap (line spacing, 1 = normal), lang ('fa': Persian, right
+// to left, in the Persian font), faDigits (Persian text: 0–9 drawn as Persian digits) }.
 function textLayout(p) {
   const st = { ...TEXT_DEFAULTS, ...p };
-  const fr = fontResolve(st.family, st.style), G = fontGlyphs(fr.file);
+  const fa = st.lang === 'fa' && typeof faLayoutLine === 'function';
+  const fr = textFont(st), G = fontGlyphs(fr.file);
   const spaceAdv = 0.3, lines = String(st.str || '').replace(/\r\n?/g, '\n').split('\n');
-  const pitch = TEXT_LINE_PITCH * (st.lineGap > 0 ? st.lineGap : 1), sp = Number.isFinite(st.spacing) ? st.spacing : 0;
+  const pitch = (fa ? FA_LINE_PITCH : TEXT_LINE_PITCH) * (st.lineGap > 0 ? st.lineGap : 1), sp = Number.isFinite(st.spacing) ? st.spacing : 0;
   const slant = fr.fakeItalic ? Math.tan(TEXT_SLANT * Math.PI / 180) : 0;
   const strokes = [], missing = new Set(), widths = [];
   let chars = 0;
   lines.forEach((line, li) => {
-    const glyphs = [];
-    let x = 0;
-    for (const ch of line) {
-      const g = textGlyph(G, ch, spaceAdv);
-      if (!g) { missing.add(ch); glyphs.push({ x, strokes: [] }); x += spaceAdv + sp; continue; }
-      glyphs.push({ x, strokes: g.strokes });
-      x += g.adv + sp; chars++;
+    let glyphs = [], w;
+    if (fa) {
+      const r = faLayoutLine(G, line, { sp, spaceAdv, digits: st.faDigits !== false, missing });
+      glyphs = r.glyphs; w = r.width; chars += r.chars;
+    } else {
+      let x = 0;
+      for (const ch of line) {
+        const g = textGlyph(G, ch, spaceAdv);
+        if (!g) { missing.add(ch); glyphs.push({ x, strokes: [] }); x += spaceAdv + sp; continue; }
+        glyphs.push({ x, strokes: g.strokes });
+        x += g.adv + sp; chars++;
+      }
+      w = glyphs.length ? x - sp : 0;
     }
-    const w = glyphs.length ? x - sp : 0;
     widths.push(w);
     const x0 = st.align === 'left' ? 0 : st.align === 'right' ? -w : -w / 2, yb = li * pitch;
     for (const g of glyphs) for (const s of g.strokes) {
@@ -198,6 +208,9 @@ function textLayout(p) {
   }
   return { strokes, missing: [...missing], lines: lines.length, chars, width: Math.max(0, ...widths), pitch, font: fr };
 }
+
+// Right-to-left text (a Persian label) inside a message: kept apart so it reads right (FSI … PDI).
+function bidiIsolate(s) { return /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/.test(s) ? '\u2068' + s + '\u2069' : s; }
 
 // A label for the object list: the first line, shortened.
 function textLabel(str) {

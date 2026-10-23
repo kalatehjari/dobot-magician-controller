@@ -6,7 +6,7 @@
 // Z0 (Dobot's Cura profile: Ø80 mm, 150 mm high). Polygon work uses Clipper (part 48) in integer micrometres.
 
 const P3_SC = 1000;                                   // Clipper units per millimetre
-const P3_VERSION = '1.5.0';
+const P3_VERSION = '1.6.0';
 const PRINT_DEFAULTS = {
   layerH: 0.2, firstH: 0.35, lineW: 0.45, firstW: 0.6, nozzle: 0.4, filament: 1.75, flow: 100,
   walls: 2, top: 4, bottom: 3, infill: 15, pattern: 'lines', seam: 'nearest',
