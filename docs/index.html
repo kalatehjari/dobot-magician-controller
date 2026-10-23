@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Magician Smart Controller – free Dobot Magician software</title>
+<meta name="description" content="Free, open-source app for the Dobot Magician robot arm. Runs in Chrome or Edge over USB: pen plotter, 2,245 drawings, text, shading, STL 3D printing and more.">
+<link rel="canonical" href="https://kalatehjari.github.io/dobot-magician-controller/">
+<meta name="google-site-verification" content="ns1RQsSB_Dc-kB8UMkDcMbTozFR8QLTaJo78uRDXX40">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171a21" media="(prefers-color-scheme: dark)">
+<meta name="author" content="Roohollah Kalatehjari">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="alternate" type="application/atom+xml" title="Magician Smart Controller releases" href="https://github.com/kalatehjari/dobot-magician-controller/releases.atom">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Magician Smart Controller">
+<meta property="og:title" content="Magician Smart Controller – free Dobot Magician software in your browser">
+<meta property="og:description" content="Draw, write, shade and 3D print with a Dobot Magician straight from Chrome or Edge over USB. 2,245 ready-made drawings, 13 single-line fonts, a built-in STL slicer and a simulator. Free and open source.">
+<meta property="og:url" content="https://kalatehjari.github.io/dobot-magician-controller/">
+<meta property="og:image" content="https://kalatehjari.github.io/dobot-magician-controller/social-card.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Magician Smart Controller: an owl, a cat and a line of text placed in the Dobot Magician's drawing zone">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://kalatehjari.github.io/dobot-magician-controller/#website",
+      "url": "https://kalatehjari.github.io/dobot-magician-controller/",
+      "name": "Magician Smart Controller",
+      "inLanguage": "en"
+    },
+    {
+      "@type": "WebApplication",
+      "@id": "https://kalatehjari.github.io/dobot-magician-controller/#app",
+      "name": "Magician Smart Controller",
+      "alternateName": "Dobot Magician Controller",
+      "description": "Free, open-source browser app that controls a Dobot Magician robot arm over USB (Web Serial): pen plotter with SVG and picture tracing, a library of 2,245 single-line drawings, text, shading and several objects per sheet, 3D printing from STL with a built-in slicer, mouse control, record and learn, dance, imitation and face reactions, with a simulator.",
+      "url": "https://kalatehjari.github.io/dobot-magician-controller/app/",
+      "applicationCategory": "UtilitiesApplication",
+      "applicationSubCategory": "Robot arm control",
+      "operatingSystem": "Windows, macOS, Linux, ChromeOS",
+      "browserRequirements": "Requires a desktop browser with the Web Serial API: Google Chrome or Microsoft Edge 89 or later.",
+      "softwareVersion": "1.5.0",
+      "datePublished": "2026-10-21",
+      "dateModified": "2026-10-23",
+      "isAccessibleForFree": true,
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "license": "https://opensource.org/licenses/MIT",
+      "downloadUrl": "https://github.com/kalatehjari/dobot-magician-controller/releases/latest/download/magician-smart-controller.html",
+      "releaseNotes": "https://github.com/kalatehjari/dobot-magician-controller/blob/main/CHANGELOG.md",
+      "screenshot": [
+        "https://kalatehjari.github.io/dobot-magician-controller/objects-and-text.png",
+        "https://kalatehjari.github.io/dobot-magician-controller/drawing-library.png",
+        "https://kalatehjari.github.io/dobot-magician-controller/3d-print-preview.png"
+      ],
+      "featureList": [
+        "Pen plotter for SVG files and pictures (PNG, JPG, WEBP, GIF, BMP) traced into lines",
+        "Drawing library with 2,245 single-line drawings in 31 categories",
+        "Text in 13 single-line fonts",
+        "Hatch shading inside closed shapes",
+        "Several objects on one sheet, saved layouts and SVG export",
+        "3D printing from STL or OBJ with a built-in slicer, preview and USB printing for the Dobot 3D-printing kit",
+        "Mouse and keyboard control, record and learn, dance to the beat, webcam imitation and face reactions",
+        "Auto-calibration and a simulator for every feature"
+      ],
+      "author": { "@type": "Person", "name": "Roohollah Kalatehjari", "url": "https://github.com/kalatehjari" },
+      "sameAs": ["https://github.com/kalatehjari/dobot-magician-controller"]
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "name": "dobot-magician-controller",
+      "codeRepository": "https://github.com/kalatehjari/dobot-magician-controller",
+      "programmingLanguage": ["JavaScript", "HTML"],
+      "license": "https://opensource.org/licenses/MIT",
+      "targetProduct": { "@id": "https://kalatehjari.github.io/dobot-magician-controller/#app" }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "Do I need to install anything?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. Open the app in Chrome or Edge, online or as the downloaded HTML file. For 3D printing the arm needs Dobot's 3D-printer firmware, which DobotStudio puts on it. Some computers also need a driver for the arm's USB-serial chip." } },
+        { "@type": "Question", "name": "Which browsers and computers does it work on?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Google Chrome or Microsoft Edge on a Windows, macOS, Linux or ChromeOS computer. The page talks to the arm through Web Serial, which Safari and Firefox do not support, so they cannot connect; phones and tablets cannot either." } },
+        { "@type": "Question", "name": "Can I try it without a robot arm?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Click Simulator instead of Connect USB and every feature runs on a simulated arm; the 3D print tab has its own printer simulator." } },
+        { "@type": "Question", "name": "Does it work offline?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Download magician-smart-controller.html from the latest release and open it from your disk. Only the camera features need the internet, to download Google's MediaPipe vision models the first time you use them." } },
+        { "@type": "Question", "name": "Is anything uploaded?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. The app runs in your browser. Camera images are processed on your computer and are not uploaded, and calibration and settings are kept in your browser's storage. This website uses no cookies and no analytics." } },
+        { "@type": "Question", "name": "Do my settings carry over between the website and the downloaded file?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. Browsers keep settings separately for each site, so the online app and a downloaded file each keep their own calibration and settings. Calibrate once in each." } },
+        { "@type": "Question", "name": "How do I switch between 3D printing and drawing?",
+          "acceptedAnswer": { "@type": "Answer", "text": "3D printing uses Dobot's 3D-printer firmware: in DobotStudio choose Tools, Open 3D Printing. For drawing and the other tabs the arm needs DobotStudio's normal firmware again; DobotStudio offers to switch back when you next connect with it." } },
+        { "@type": "Question", "name": "Has it been tested on a real arm?",
+          "acceptedAnswer": { "@type": "Answer", "text": "It is tested with the built-in arm and printer simulators and in Chrome on macOS. Testing on a physical arm is limited so far, and 3D printing has not yet been tried on a physical 3D-printing kit, so watch the first drawings and prints closely and report problems on GitHub." } },
+        { "@type": "Question", "name": "Is this an official Dobot product?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. It is an independent open-source project under the MIT licence and is not affiliated with or endorsed by Dobot." } }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+:root{
+  color-scheme:light dark;
+  --bg:#f5f6f8;--panel:#ffffff;--ink:#1b1f24;--muted:#525c6b;--line:#e1e4ea;
+  --accent:#2563eb;--accent-strong:#1d4ed8;--on-accent:#ffffff;--soft:#e8effd;--tag:#1d4ed8;
+  --shadow:0 1px 2px rgba(16,24,40,.05),0 10px 28px rgba(16,24,40,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0f1115;--panel:#171a21;--ink:#e6e8ec;--muted:#a3acba;--line:#2a2f3a;
+    --accent:#60a5fa;--accent-strong:#93c5fd;--on-accent:#0b1220;--soft:#17243b;--tag:#93c5fd;
+    --shadow:0 0 0 1px rgba(255,255,255,.02);
+  }
+}
+@media (prefers-reduced-motion: no-preference){ html{scroll-behavior:smooth} }
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+img{display:block;max-width:100%;height:auto}
+a{color:var(--accent);text-underline-offset:.15em}
+:where(a,summary):focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:6px}
+h1,h2,h3{line-height:1.2;letter-spacing:-.01em}
+.wrap{max-width:1120px;margin:0 auto;padding:0 16px}
+@media (min-width:700px){ .wrap{padding:0 28px} }
+.skip{position:absolute;left:12px;top:-80px;z-index:20;background:var(--panel);color:var(--ink);padding:10px 14px;border-radius:8px;border:2px solid var(--accent)}
+.skip:focus{top:12px}
+main:focus{outline:none}
+
+/* header */
+.top{position:sticky;top:0;z-index:10;background:var(--panel);border-bottom:1px solid var(--line)}
+.top-in{display:flex;align-items:center;gap:12px;min-height:60px}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto;color:var(--ink);font-weight:700;text-decoration:none;white-space:nowrap}
+.brand svg{width:30px;height:30px;flex:none}
+.top nav ul{display:flex;gap:2px;list-style:none;margin:0;padding:0}
+.top nav a{display:block;padding:8px 10px;border-radius:8px;color:var(--muted);text-decoration:none;font-size:15px}
+.top nav a:hover{color:var(--ink);background:var(--soft)}
+.top .btn{display:inline-block;min-height:40px;padding:10px 14px;font-size:15px;white-space:nowrap}
+@media (max-width:959px){ .top nav{display:none} }
+@media (max-width:480px){ .top .wide-only{display:none} .brand{gap:8px} .brand span{font-size:15px} }
+@media (max-width:374px){ .brand svg{width:26px;height:26px} .brand span{font-size:14px} .top .btn{padding:10px 12px} }
+@media (max-width:339px){ .brand span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap} }
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:10px 20px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-weight:650;text-decoration:none;line-height:1.2}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.primary:hover{background:var(--accent-strong);border-color:var(--accent-strong)}
+.btn small{font-weight:500;opacity:.8}
+
+/* hero */
+.hero{padding:48px 0 56px;background:var(--panel);border-bottom:1px solid var(--line)}
+.hero-in{display:grid;gap:36px;align-items:center}
+@media (min-width:960px){ .hero{padding:72px 0 80px} .hero-in{grid-template-columns:1fr 1.08fr;gap:56px} }
+.eyebrow{display:inline-block;margin:0 0 18px;padding:4px 12px;border-radius:99px;background:var(--soft);color:var(--tag);font-size:14px;font-weight:650}
+h1{margin:0 0 18px;font-size:clamp(2.2rem,1.4rem + 3.2vw,3.5rem);line-height:1.05;letter-spacing:-.025em}
+.lead{margin:0 0 26px;font-size:clamp(1.06rem,1rem + .35vw,1.25rem);color:var(--muted);max-width:34em}
+.lead strong{color:var(--ink)}
+.cta{display:flex;flex-wrap:wrap;gap:12px;margin:0 0 18px}
+.fine{margin:0;font-size:14px;color:var(--muted);max-width:40em}
+
+/* screenshots */
+.shot{margin:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;box-shadow:var(--shadow)}
+.shot + .shot{margin-top:14px}
+
+/* sections */
+.sec{padding:64px 0}
+.sec.alt{background:var(--panel);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+h2{margin:0 0 12px;font-size:clamp(1.65rem,1.25rem + 1.5vw,2.3rem)}
+.sub{margin:0 0 40px;color:var(--muted);font-size:1.08rem;max-width:44em}
+.feature{display:grid;gap:22px;align-items:center;margin:0 0 64px}
+.feature:last-child{margin-bottom:0}
+@media (min-width:960px){ .feature{grid-template-columns:1fr 1.2fr;gap:56px} .feature.flip .text{order:2} }
+.feature h3{margin:0 0 10px;font-size:1.4rem}
+.feature p{margin:0 0 12px}
+.feature ul{margin:0;padding-left:1.2em}
+.feature li{margin:4px 0}
+.muted{color:var(--muted)}
+
+.more-h{margin:0 0 18px;font-size:1.4rem}
+.cards{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));margin:0;padding:0;list-style:none}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px;box-shadow:var(--shadow)}
+.sec.alt .card{background:var(--bg)}
+.card h4{margin:0 0 6px;font-size:1.06rem;line-height:1.3}
+.card p{margin:0;color:var(--muted);font-size:15px;line-height:1.55}
+
+.cols{display:grid;gap:40px}
+@media (min-width:960px){ .cols{grid-template-columns:1fr 1fr;gap:56px} }
+.steps{counter-reset:step;list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.steps li{counter-increment:step;position:relative;padding:14px 16px 14px 62px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.sec.alt .steps li{background:var(--bg)}
+.steps li::before{content:counter(step);position:absolute;left:16px;top:13px;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--on-accent);font-weight:700;font-size:15px}
+.tip{margin:16px 0 0;font-size:15px;color:var(--muted)}
+.plain{margin:0;padding-left:1.2em}
+.plain li{margin:6px 0}
+
+details{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin:0 0 10px;padding:0 18px}
+summary{cursor:pointer;padding:15px 0;font-weight:650}
+details[open] summary{border-bottom:1px solid var(--line)}
+details p{margin:12px 0 16px;color:var(--muted)}
+.faq{max-width:820px}
+
+.band{padding:56px 0;text-align:center}
+.band h2{margin-bottom:8px}
+.band .cta{justify-content:center;margin:22px 0 0}
+
+footer{padding:36px 0 48px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
+footer p{margin:0 0 10px;max-width:60em}
+footer a{color:inherit}
+footer .links{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0 0 16px;padding:0;list-style:none}
+</style>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+
+<header class="top">
+  <div class="wrap top-in">
+    <a class="brand" href="./">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#2563eb"/><path d="M10 52.5h44" stroke="#bfdbfe" stroke-width="2.5" stroke-linecap="round"/><rect x="13" y="43" width="22" height="7" rx="3" fill="#fff"/><path d="M24 43 21.5 25 44 17.5 44.5 35" fill="none" stroke="#fff" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="21.5" cy="25" r="3.6" fill="#2563eb" stroke="#fff" stroke-width="2.6"/><circle cx="44" cy="17.5" r="3.6" fill="#2563eb" stroke="#fff" stroke-width="2.6"/><circle cx="44.5" cy="41.5" r="3.4" fill="#f87171"/></svg>
+      <span>Magician Smart Controller</span>
+    </a>
+    <nav aria-label="Sections">
+      <ul>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#start">Get started</a></li>
+        <li><a href="#print3d">3D printing</a></li>
+        <li><a href="#faq">Questions</a></li>
+        <li><a href="https://github.com/kalatehjari/dobot-magician-controller">GitHub</a></li>
+      </ul>
+    </nav>
+    <a class="btn primary" href="app/">Open<span class="wide-only"> the</span> app</a>
+  </div>
+</header>
+
+<main id="content" tabindex="-1">
+  <section class="hero" aria-labelledby="title">
+    <div class="wrap hero-in">
+      <div>
+        <p class="eyebrow">Free and open source · version 1.5.0</p>
+        <h1 id="title">Magician Smart Controller</h1>
+        <p class="lead">Software for the <strong>Dobot Magician</strong> robot arm that runs in your browser. Plug the arm in by USB and draw, write, shade, 3D print, move, record, dance and react — straight from Chrome or Edge, with nothing to install.</p>
+        <div class="cta">
+          <a class="btn primary" href="app/">Open the app</a>
+          <a class="btn" href="https://github.com/kalatehjari/dobot-magician-controller/releases/latest/download/magician-smart-controller.html">Download <small>one HTML file, 4.3 MB</small></a>
+        </div>
+        <p class="fine">For Google Chrome and Microsoft Edge on Windows, macOS, Linux and ChromeOS computers. No arm at hand? The built-in simulator runs every feature.</p>
+      </div>
+      <figure class="shot">
+        <img src="objects-and-text.png" width="1068" height="855" fetchpriority="high" alt="The plotter tab: an owl, a cat and the words Hello from the Magician placed inside the arm's green drawing zone">
+      </figure>
+    </div>
+  </section>
+
+  <section class="sec" id="features" aria-labelledby="features-h">
+    <div class="wrap">
+      <h2 id="features-h">What it does</h2>
+      <p class="sub">One page holds everything: a pen plotter with a big drawing library, text and shading, a 3D-printing slicer, and ways to move the arm by hand, by music or by camera.</p>
+
+      <article class="feature">
+        <div class="text">
+          <h3>Pen plotter for SVGs and pictures</h3>
+          <p>Draw SVG files, or turn pictures (PNG, JPG, WEBP, GIF, BMP) into lines: outlines for shapes, single centre lines for line art and lettering, or edges for photos. Threshold, detail and smoothing are adjustable, and the lines can be saved as SVG.</p>
+          <p class="muted">Set the size in millimetres, turn, mirror and drag the drawing on a map of the paper. The green zone shows where the pen can reach, and every line is kept inside it. Strokes are ordered to cut pen-up travel.</p>
+        </div>
+        <figure class="shot"><img src="picture-to-lines.png" width="1068" height="545" loading="lazy" decoding="async" alt="A line drawing traced into single lines, with the trace settings"></figure>
+      </article>
+
+      <article class="feature flip">
+        <div class="text">
+          <h3>2,245 ready-made drawings in 31 categories</h3>
+          <p>Animals, cars, poses, faces, flags in colour, city skylines, songs as sheet music, constellations and the zodiac, leaves, topography, aircraft, sci-fi, clothing and shoes, signs, emojis, technology, music, art and more.</p>
+          <p class="muted">Search or pick a category, click a drawing to add it to the sheet, or download it as SVG. The whole library also comes as a folder of SVG files with each release.</p>
+        </div>
+        <figure class="shot"><img src="drawing-library.png" width="1068" height="631" loading="lazy" decoding="async" alt="The drawing library showing flags in colour"></figure>
+      </article>
+
+      <article class="feature">
+        <div class="text">
+          <h3>Text, shading and several objects on one sheet</h3>
+          <ul>
+            <li><strong>Text</strong> in 13 single-line fonts (Hershey and EMS) with up to four styles: letter height in millimetres, rotation, alignment, spacing, several lines and accented letters.</li>
+            <li><strong>Shading</strong> fills closed shapes with hatch lines, cross-hatch or three directions, at any angle and spacing, with closer lines for darker colours.</li>
+            <li><strong>Several objects:</strong> drawings, pictures and text each keep their own size, place, turn and shading. Save and open layouts, and export the sheet as one SVG.</li>
+          </ul>
+        </div>
+        <div>
+          <figure class="shot"><img src="text-tool.png" width="1068" height="387" loading="lazy" decoding="async" alt="The text tool with its thirteen single-line fonts"></figure>
+          <figure class="shot"><img src="shading.png" width="1068" height="368" loading="lazy" decoding="async" alt="Shading settings: pattern, angle, spacing and an angle per shape"></figure>
+        </div>
+      </article>
+
+      <article class="feature flip">
+        <div class="text">
+          <h3>Smooth, quiet drawing you can watch</h3>
+          <p>The whole drawing runs as one continuous path with low, rounded pen hops instead of stopping at every lift. Choose Quiet &amp; smooth, Balanced or Fast, or let the quiet-speed finder listen through the microphone and pick the quietest speeds.</p>
+          <p class="muted">Before drawing, <em>Hover round</em> traces the outside just above the paper so you can check its position. While the arm draws, the pen shows as a red dot and finished lines turn red. Pause, resume or stop at any moment.</p>
+        </div>
+        <figure class="shot"><img src="live-drawing.png" width="1038" height="561" loading="lazy" decoding="async" alt="The pen shown as a red dot while the finished lines turn red"></figure>
+      </article>
+
+      <article class="feature">
+        <div class="text">
+          <h3>3D printing from STL files</h3>
+          <p>With Dobot's 3D-printing kit, load STL or OBJ files or one of seven built-in models, place them on the Ø80 mm plate and slice them in the page: walls, solid top and bottom, infill, supports, skirt or brim, and vase mode. Dobot's recommended settings are the defaults.</p>
+          <p class="muted">Preview every line in 3D or layer by layer, then print straight over USB with line numbers, checksums and automatic resend, live progress, pause and stop — or download the G-code for Repetier Host or Cura.</p>
+        </div>
+        <div>
+          <figure class="shot"><img src="3d-print-preview.png" width="1068" height="656" loading="lazy" decoding="async" alt="A sliced gear on the round plate: walls, top layers and skirt"></figure>
+        </div>
+      </article>
+
+      <h3 class="more-h">Also in the app</h3>
+      <ul class="cards" role="list">
+        <li class="card"><h4>Mouse control</h4><p>Click or drag on a map of the reach to move the arm, nudge it with the keyboard, and work the pen, suction cup and gripper.</p></li>
+        <li class="card"><h4>Record &amp; learn</h4><p>Record movements, average several takes into one smooth learned movement, and replay it.</p></li>
+        <li class="card"><h4>Dance</h4><p>Finds the beat in a song file, from the microphone or a metronome, and dances to it.</p></li>
+        <li class="card"><h4>Imitate</h4><p>The arm mirrors your hand or arm through the webcam. Draw in the air with a pinch, or teach a movement by showing it.</p></li>
+        <li class="card"><h4>Face &amp; reactions</h4><p>Reads expressions, winks, nods, head shakes and hand signs, reacts to them, and can follow your face.</p></li>
+        <li class="card"><h4>Auto-calibration</h4><p>Centres the arm, checks its joint readings, measures the tool offset and works out the reachable area. You only lower the pen onto the paper.</p></li>
+        <li class="card"><h4>Simulator</h4><p>Try every feature without hardware, including 3D printing on a simulated printer.</p></li>
+        <li class="card"><h4>Safety first</h4><p>Every target is kept inside the reachable space, alarms are shown and can be cleared, and STOP (or Esc) halts everything.</p></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="sec alt" id="start" aria-labelledby="start-h">
+    <div class="wrap cols">
+      <div>
+        <h2 id="start-h">Get started</h2>
+        <ol class="steps" role="list">
+          <li><a href="app/">Open the app</a> in Google Chrome or Microsoft Edge on a computer — online, or download the single HTML file from the <a href="https://github.com/kalatehjari/dobot-magician-controller/releases/latest">latest release</a> and open it from your disk.</li>
+          <li>Switch the Magician on and plug it in with USB. Click <strong>Connect USB</strong> and pick the arm's serial port.</li>
+          <li>In the calibration dialog, click <strong>Start auto-calibration</strong>, lower the pen onto the paper with the ▼ buttons, then click <strong>This is the paper</strong>.</li>
+          <li>Open <strong>Plotter</strong>, pick a drawing from the library, drop in an SVG or a picture, or type some text. Place it in the green zone, press <strong>Hover round</strong> to check the paper, and click <strong>Draw</strong>.</li>
+        </ol>
+        <p class="tip">No arm at hand? Click <strong>Simulator</strong> instead of Connect USB. If the arm is not in the port list, check the cable and that the arm is on; some computers need a driver for the arm's USB-serial chip.</p>
+      </div>
+      <div id="print3d">
+        <h2>3D printing with Dobot's kit</h2>
+        <ol class="steps" role="list">
+          <li>Fit the 3D-printing kit as in Dobot's guide: hot end on the forearm, heater on interface 4, fan on 5, temperature sensor on 6, extruder motor on Stepper1.</li>
+          <li>Put Dobot's 3D-printer firmware on the arm: in DobotStudio choose <strong>Tools → Open 3D Printing</strong>. Then close DobotStudio and Repetier Host.</li>
+          <li>In the <strong>3D print</strong> tab, click <strong>Connect 3D printer (USB)</strong>, press <strong>Heat</strong>, wait for 200 °C and <strong>Feed 10 mm</strong> until plastic comes out.</li>
+          <li>Tape the plate, lower the nozzle onto the tape (hold the forearm's unlock button) and press the <strong>Key</strong> button on the base, or <strong>Save nozzle height</strong>. The arm beeps.</li>
+          <li>Load a model, press <strong>Slice</strong>, check the preview and press <strong>Start print…</strong></li>
+        </ol>
+        <p class="tip">To draw again, the arm needs DobotStudio's normal firmware; DobotStudio offers to switch back when you next connect with it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="safety-h">
+    <div class="wrap cols">
+      <div>
+        <h2 id="safety-h">Safety</h2>
+        <ul class="plain">
+          <li>Keep hands and objects clear of the arm. In the Dance, Imitate and Face tabs the arm moves by itself.</li>
+          <li><strong>STOP</strong> (or Esc) halts motion and clears the arm's command queue. If the arm's red light comes on, clear the alarm with the red bar.</li>
+          <li>When 3D printing, the nozzle reaches 200 °C or more. Don't touch it, and stay with the printer.</li>
+          <li>The software limits help, but they are not a substitute for watching the arm.</li>
+        </ul>
+      </div>
+      <div>
+        <h2 id="privacy-h">Requirements and privacy</h2>
+        <ul class="plain">
+          <li>A computer with Google Chrome or Microsoft Edge. Safari and Firefox don't support Web Serial, so they can't connect to the arm.</li>
+          <li>The camera features need a webcam, and an internet connection the first time to download Google's MediaPipe vision models.</li>
+          <li>Everything runs in your browser. Camera images stay on your computer, and settings are kept in your browser's storage. This website has no cookies and no analytics.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec alt" id="faq" aria-labelledby="faq-h">
+    <div class="wrap">
+      <h2 id="faq-h">Questions</h2>
+      <div class="faq">
+      <details>
+        <summary>Do I need to install anything?</summary>
+        <p>No. Open the app in Chrome or Edge, online or as the downloaded HTML file. For 3D printing the arm needs Dobot's 3D-printer firmware, which DobotStudio puts on it. Some computers also need a driver for the arm's USB-serial chip.</p>
+      </details>
+      <details>
+        <summary>Which browsers and computers does it work on?</summary>
+        <p>Google Chrome or Microsoft Edge on a Windows, macOS, Linux or ChromeOS computer. The page talks to the arm through Web Serial, which Safari and Firefox do not support, so they cannot connect; phones and tablets cannot either.</p>
+      </details>
+      <details>
+        <summary>Can I try it without a robot arm?</summary>
+        <p>Yes. Click <strong>Simulator</strong> instead of Connect USB and every feature runs on a simulated arm; the 3D print tab has its own printer simulator.</p>
+      </details>
+      <details>
+        <summary>Does it work offline?</summary>
+        <p>Yes. Download <code>magician-smart-controller.html</code> from the <a href="https://github.com/kalatehjari/dobot-magician-controller/releases/latest">latest release</a> and open it from your disk. Only the camera features need the internet, to download Google's MediaPipe vision models the first time you use them.</p>
+      </details>
+      <details>
+        <summary>Is anything uploaded?</summary>
+        <p>No. The app runs in your browser. Camera images are processed on your computer and are not uploaded, and calibration and settings are kept in your browser's storage. This website uses no cookies and no analytics.</p>
+      </details>
+      <details>
+        <summary>Do my settings carry over between the website and the downloaded file?</summary>
+        <p>No. Browsers keep settings separately for each site, so the online app and a downloaded file each keep their own calibration and settings. Calibrate once in each.</p>
+      </details>
+      <details>
+        <summary>How do I switch between 3D printing and drawing?</summary>
+        <p>3D printing uses Dobot's 3D-printer firmware: in DobotStudio choose <strong>Tools → Open 3D Printing</strong>. For drawing and the other tabs the arm needs DobotStudio's normal firmware again; DobotStudio offers to switch back when you next connect with it.</p>
+      </details>
+      <details>
+        <summary>Has it been tested on a real arm?</summary>
+        <p>It is tested with the built-in arm and printer simulators and in Chrome on macOS. Testing on a physical arm is limited so far, and 3D printing has not yet been tried on a physical 3D-printing kit, so watch the first drawings and prints closely and <a href="https://github.com/kalatehjari/dobot-magician-controller/issues">report problems on GitHub</a>.</p>
+      </details>
+      <details>
+        <summary>Is this an official Dobot product?</summary>
+        <p>No. It is an independent open-source project under the MIT licence and is not affiliated with or endorsed by Dobot.</p>
+      </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" aria-labelledby="go-h">
+    <div class="wrap">
+      <h2 id="go-h">Ready when your arm is</h2>
+      <p class="muted">Open the app, plug in the Magician, and draw your first picture in a few minutes.</p>
+      <div class="cta">
+        <a class="btn primary" href="app/">Open the app</a>
+        <a class="btn" href="https://github.com/kalatehjari/dobot-magician-controller">Source code on GitHub</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <ul class="links">
+      <li><a href="https://github.com/kalatehjari/dobot-magician-controller">Source code</a></li>
+      <li><a href="https://github.com/kalatehjari/dobot-magician-controller/releases">Releases</a></li>
+      <li><a href="https://github.com/kalatehjari/dobot-magician-controller/blob/main/CHANGELOG.md">Changelog</a></li>
+      <li><a href="https://github.com/kalatehjari/dobot-magician-controller#how-it-works">How it works</a></li>
+      <li><a href="https://github.com/kalatehjari/dobot-magician-controller/issues">Report a problem</a></li>
+    </ul>
+    <p>Magician Smart Controller is free software by Roohollah Kalatehjari under the <a href="https://github.com/kalatehjari/dobot-magician-controller/blob/main/LICENSE">MIT licence</a>. It includes Clipper by Angus Johnson (Boost Software License) for 3D printing and uses Google MediaPipe for the camera features; the drawing library and fonts are credited in the app and in the <a href="https://github.com/kalatehjari/dobot-magician-controller#acknowledgements">acknowledgements</a>.</p>
+    <p>This project is not affiliated with or endorsed by Dobot. “Dobot” and “Magician” are trademarks of their respective owner.</p>
+  </div>
+</footer>
+</body>
+</html>
