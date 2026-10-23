@@ -41,13 +41,13 @@
       "@id": "https://kalatehjari.github.io/dobot-magician-controller/#app",
       "name": "Magician Smart Controller",
       "alternateName": "Dobot Magician Controller",
-      "description": "Free, open-source browser app that controls a Dobot Magician robot arm over USB (Web Serial): pen plotter with SVG and picture tracing, a library of 2,245 single-line drawings, text, shading and several objects per sheet, 3D printing from STL with a built-in slicer, mouse control, record and learn, dance, imitation and face reactions, with a simulator.",
+      "description": "Free, open-source browser app that controls a Dobot Magician robot arm over USB (Web Serial), Bluetooth or Wi-Fi: pen plotter with SVG and picture tracing, a library of 2,245 single-line drawings, English and Persian text, shading and several objects per sheet, a safe drawing zone and safety lock, 3D printing from STL with a built-in slicer, mouse control, record and learn, dance, imitation and face reactions, with a simulator.",
       "url": "https://kalatehjari.github.io/dobot-magician-controller/app/",
       "applicationCategory": "UtilitiesApplication",
       "applicationSubCategory": "Robot arm control",
       "operatingSystem": "Windows, macOS, Linux, ChromeOS",
       "browserRequirements": "Requires a desktop browser with the Web Serial API: Google Chrome or Microsoft Edge 89 or later.",
-      "softwareVersion": "1.5.0",
+      "softwareVersion": "1.6.0",
       "datePublished": "2026-10-21",
       "dateModified": "2026-10-23",
       "isAccessibleForFree": true,
@@ -63,9 +63,11 @@
       "featureList": [
         "Pen plotter for SVG files and pictures (PNG, JPG, WEBP, GIF, BMP) traced into lines",
         "Drawing library with 2,245 single-line drawings in 31 categories",
-        "Text in 13 single-line fonts",
+        "Text in 13 single-line fonts, and Persian text written right to left",
         "Hatch shading inside closed shapes",
         "Several objects on one sheet, saved layouts and SVG export",
+        "Safe drawing zone clicked on the map, and a safety lock that checks every movement before it starts",
+        "Bluetooth and Wi-Fi with Dobot's Wireless 1 and Wireless 2 modules",
         "3D printing from STL or OBJ with a built-in slicer, preview and USB printing for the Dobot 3D-printing kit",
         "Mouse and keyboard control, record and learn, dance to the beat, webcam imitation and face reactions",
         "Auto-calibration and a simulator for every feature"
@@ -88,6 +90,8 @@
           "acceptedAnswer": { "@type": "Answer", "text": "No. Open the app in Chrome or Edge, online or as the downloaded HTML file. For 3D printing the arm needs Dobot's 3D-printer firmware, which DobotStudio puts on it. Some computers also need a driver for the arm's USB-serial chip." } },
         { "@type": "Question", "name": "Which browsers and computers does it work on?",
           "acceptedAnswer": { "@type": "Answer", "text": "Google Chrome or Microsoft Edge on a Windows, macOS, Linux or ChromeOS computer. The page talks to the arm through Web Serial, which Safari and Firefox do not support, so they cannot connect; phones and tablets cannot either." } },
+        { "@type": "Question", "name": "Can I connect without the USB cable?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes, with Dobot's wireless modules. The Bluetooth module (Wireless 1) connects from Chrome or Edge with Web Bluetooth. The Wi-Fi module (Wireless 2) is told your network once over USB from the app; after that a small bridge program on your computer (Python, nothing to install, downloadable from the app) passes the commands on, because web pages cannot send the module's UDP messages." } },
         { "@type": "Question", "name": "Can I try it without a robot arm?",
           "acceptedAnswer": { "@type": "Answer", "text": "Yes. Click Simulator instead of Connect USB and every feature runs on a simulated arm; the 3D print tab has its own printer simulator." } },
         { "@type": "Question", "name": "Does it work offline?",
@@ -243,7 +247,7 @@ footer .links{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0 0 16px;padding:0
   <section class="hero" aria-labelledby="title">
     <div class="wrap hero-in">
       <div>
-        <p class="eyebrow">Free and open source · version 1.5.0</p>
+        <p class="eyebrow">Free and open source · version 1.6.0</p>
         <h1 id="title">Magician Smart Controller</h1>
         <p class="lead">Software for the <strong>Dobot Magician</strong> robot arm that runs in your browser. Plug the arm in by USB and draw, write, shade, 3D print, move, record, dance and react — straight from Chrome or Edge, with nothing to install.</p>
         <div class="cta">
@@ -286,6 +290,7 @@ footer .links{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0 0 16px;padding:0
           <h3>Text, shading and several objects on one sheet</h3>
           <ul>
             <li><strong>Text</strong> in 13 single-line fonts (Hershey and EMS) with up to four styles: letter height in millimetres, rotation, alignment, spacing, several lines and accented letters.</li>
+            <li><strong>Persian text</strong> (<span lang="fa" dir="rtl">فارسی</span>), written right to left in a single-line Persian font: letters join by themselves, vowel marks sit on their letters, and English words and numbers inside stay left to right.</li>
             <li><strong>Shading</strong> fills closed shapes with hatch lines, cross-hatch or three directions, at any angle and spacing, with closer lines for darker colours.</li>
             <li><strong>Several objects:</strong> drawings, pictures and text each keep their own size, place, turn and shading. Save and open layouts, and export the sheet as one SVG.</li>
           </ul>
@@ -324,6 +329,9 @@ footer .links{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0 0 16px;padding:0
         <li class="card"><h4>Imitate</h4><p>The arm mirrors your hand or arm through the webcam. Draw in the air with a pinch, or teach a movement by showing it.</p></li>
         <li class="card"><h4>Face &amp; reactions</h4><p>Reads expressions, winks, nods, head shakes and hand signs, reacts to them, and can follow your face.</p></li>
         <li class="card"><h4>Auto-calibration</h4><p>Centres the arm, checks its joint readings, measures the tool offset and works out the reachable area. You only lower the pen onto the paper.</p></li>
+        <li class="card"><h4>Safe drawing zone</h4><p>Click the corners of your paper on the map. Drawings, pen-up travel and redraws stay inside it; save the pen height for each kind of paper.</p></li>
+        <li class="card"><h4>Safety lock</h4><p>After centring, every movement is checked before it starts. If it would leave the allowed area, adjust it or let the app trim it to the boundary.</p></li>
+        <li class="card"><h4>Bluetooth &amp; Wi-Fi</h4><p>Leave the cable: use Dobot's Bluetooth module in Chrome or Edge, or the Wi-Fi module through a small bridge program.</p></li>
         <li class="card"><h4>Simulator</h4><p>Try every feature without hardware, including 3D printing on a simulated printer.</p></li>
         <li class="card"><h4>Safety first</h4><p>Every target is kept inside the reachable space, alarms are shown and can be cleared, and STOP (or Esc) halts everything.</p></li>
       </ul>
@@ -389,6 +397,10 @@ footer .links{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0 0 16px;padding:0
       <details>
         <summary>Which browsers and computers does it work on?</summary>
         <p>Google Chrome or Microsoft Edge on a Windows, macOS, Linux or ChromeOS computer. The page talks to the arm through Web Serial, which Safari and Firefox do not support, so they cannot connect; phones and tablets cannot either.</p>
+      </details>
+      <details>
+        <summary>Can I connect without the USB cable?</summary>
+        <p>Yes, with Dobot's wireless modules. The <strong>Bluetooth</strong> module (Wireless 1) connects from Chrome or Edge with Web Bluetooth. The <strong>Wi-Fi</strong> module (Wireless 2) is told your network once over USB from the app; after that a small bridge program on your computer (Python, nothing to install, downloadable from the app) passes the commands on, because web pages cannot send the module's UDP messages.</p>
       </details>
       <details>
         <summary>Can I try it without a robot arm?</summary>
